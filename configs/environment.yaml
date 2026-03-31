@@ -1,0 +1,106 @@
+# BSF Environment Configuration
+# Based on peer-reviewed research (Padmanabha et al. 2020, Chia et al. 2018, etc.)
+
+# === LARVAE BIOLOGY ===
+larvae:
+  initial_weight_mg: 0.04          # Neonate weight
+  max_weight_mg: 200               # Maximum prepupa weight
+  harvest_target_mg: 150           # Typical harvest weight
+  development_days_min: 12         # Fastest development
+  development_days_max: 16         # Slowest development
+  instars: 6                       # Number of larval stages
+
+# === GROWTH MODEL PARAMETERS ===
+# Logistic growth model: dB/dt = r * B * (1 - B/K)
+growth:
+  max_specific_growth_rate: 0.02   # per hour (k_inges)
+  maintenance_rate: 0.005          # per hour (k_maint)
+  feed_efficiency: 0.15            # fraction of feed converted to biomass
+  # Development sum thresholds (hours of optimal conditions)
+  development_sum:
+    feeding_reduction_start: 320   # k_TΣ1: start reducing feed intake
+    feeding_stop: 400              # k_TΣ2: stop feeding (prepupa)
+    pupation: 450                  # k_TΣ3: pupation begins
+
+# === TEMPERATURE EFFECTS ===
+# Based on Chia et al. 2018, Shumo et al. 2019
+temperature:
+  lethal_min_c: 15                 # Below this = 100% mortality
+  suboptimal_min_c: 20             # Growth slows below this
+  optimal_min_c: 27                # Optimal range start
+  optimal_max_c: 32                # Optimal range end
+  suboptimal_max_c: 37             # Growth slows above this
+  lethal_max_c: 40                 # Above this = 100% mortality
+
+# === MOISTURE EFFECTS ===
+moisture:
+  lethal_min_pct: 30               # Below = desiccation death
+  suboptimal_min_pct: 50           # Slow ingestion
+  optimal_min_pct: 60              # Optimal range start
+  optimal_max_pct: 75              # Optimal range end
+  suboptimal_max_pct: 80           # Reduced oxygen
+  lethal_max_pct: 85               # Above = drowning
+
+# === C:N RATIO EFFECTS ===
+cn_ratio:
+  optimal_min: 14
+  optimal_max: 18
+  acceptable_min: 10
+  acceptable_max: 30
+  # Effect multipliers
+  optimal_effect: 1.0
+  suboptimal_effect: 0.7
+  poor_effect: 0.4
+
+# === FEEDING PARAMETERS ===
+feeding:
+  baseline_rate_mg_per_larva: 100  # mg wet feed per larva per day
+  # Age-based multipliers
+  age_multipliers:
+    day_1_3: 0.5                   # Young larvae eat less
+    day_4_7: 1.0                   # Peak feeding
+    day_8_10: 1.5                  # Heavy feeding before prepupa
+    day_11_plus: 0.5               # Prepupa eat less
+
+# === MORTALITY MODEL ===
+mortality:
+  base_daily_rate: 0.001           # 0.1% daily in optimal conditions
+  # Stress factor coefficients (additive)
+  stress_coefficients:
+    temperature: 0.01              # per degree outside optimal
+    moisture: 0.02                 # per 5% outside optimal
+    cn_ratio: 0.01                 # per unit outside optimal
+    density: 0.005                 # per larvae/cm² above 5
+    starvation: 0.05               # if no feed for 24h
+
+# === DENSITY ===
+density:
+  optimal_per_cm2: 5
+  max_per_cm2: 10
+
+# === SIMULATION SETTINGS ===
+simulation:
+  timestep_hours: 4                # Each step = 4 hours
+  steps_per_day: 6                 # 24 / 4 = 6 steps
+  episode_max_days: 16             # Max episode length
+  initial_larvae_count: 1000       # Starting population
+
+# === STATE SPACE BOUNDS ===
+state_bounds:
+  age_days: [0, 16]
+  biomass_mg: [0.04, 200]
+  survival_rate: [0, 1]
+  development_stage: [0, 6]
+  cn_ratio: [5, 100]
+  moisture_pct: [20, 95]
+  ph: [4, 10]
+  substrate_remaining_pct: [0, 100]
+  temperature_c: [10, 45]
+  humidity_pct: [20, 100]
+
+# === ACTION SPACE BOUNDS ===
+action_bounds:
+  feed_cn_adjustment: [-5, 5]      # Adjust target C:N
+  feed_amount_multiplier: [0.5, 2.0]
+  moisture_action: [0, 2]          # 0=none, 1=add water, 2=ventilate
+  aeration_level: [0, 2]           # 0=low, 1=medium, 2=high

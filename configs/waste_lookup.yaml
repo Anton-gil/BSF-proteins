@@ -1,0 +1,331 @@
+# Waste Lookup Table
+# Maps common waste types to nutritional properties for BSF larvae feeding
+# 
+# C:N Ratio Guide:
+#   - Lower C:N (5-15) = More nitrogen = Better for protein growth
+#   - Higher C:N (30-50+) = More carbon = Energy but less protein building
+#   - Optimal for BSF: 14-18
+#
+# Usage: Blend waste types to achieve target C:N ratio
+
+waste_types:
+
+  # ═══════════════════════════════════════════════════════════════
+  # HIGH NITROGEN (C:N < 15) - Excellent for protein growth
+  # ═══════════════════════════════════════════════════════════════
+  
+  chicken_manure:
+    cn_ratio: 8
+    moisture_percent: 70
+    category: "animal_waste"
+    availability: "common"
+    notes: "Excellent nitrogen source, may have odor"
+    
+  fish_waste:
+    cn_ratio: 6
+    moisture_percent: 75
+    category: "animal_waste"
+    availability: "regional"
+    notes: "Very high protein, fast decomposition, strong smell"
+    
+  fish_meal:
+    cn_ratio: 5
+    moisture_percent: 10
+    category: "animal_waste"
+    availability: "commercial"
+    notes: "Concentrated protein, expensive"
+    
+  blood_meal:
+    cn_ratio: 3
+    moisture_percent: 10
+    category: "animal_waste"
+    availability: "commercial"
+    notes: "Extremely high nitrogen, use sparingly"
+    
+  shrimp_waste:
+    cn_ratio: 7
+    moisture_percent: 70
+    category: "animal_waste"
+    availability: "regional"
+    notes: "Good protein, contains chitin"
+    
+  meat_scraps:
+    cn_ratio: 6
+    moisture_percent: 60
+    category: "animal_waste"
+    availability: "common"
+    notes: "High protein, attracts pests if exposed"
+    
+  egg_waste:
+    cn_ratio: 5
+    moisture_percent: 75
+    category: "animal_waste"
+    availability: "common"
+    notes: "Excellent protein, shells provide calcium"
+
+  # ═══════════════════════════════════════════════════════════════
+  # BALANCED (C:N 15-25) - Good all-around feed
+  # ═══════════════════════════════════════════════════════════════
+  
+  rice_bran:
+    cn_ratio: 20
+    moisture_percent: 10
+    category: "grain_waste"
+    availability: "common"
+    notes: "Excellent base feed, needs water added"
+    
+  wheat_bran:
+    cn_ratio: 18
+    moisture_percent: 12
+    category: "grain_waste"
+    availability: "common"
+    notes: "Similar to rice bran, good nutrition"
+    
+  vegetable_scraps_mixed:
+    cn_ratio: 20
+    moisture_percent: 85
+    category: "vegetable"
+    availability: "very_common"
+    notes: "Most accessible waste, variable composition"
+    
+  kitchen_waste_mixed:
+    cn_ratio: 18
+    moisture_percent: 70
+    category: "mixed"
+    availability: "very_common"
+    notes: "Typical household food waste"
+    
+  restaurant_waste:
+    cn_ratio: 15
+    moisture_percent: 70
+    category: "mixed"
+    availability: "common"
+    notes: "Often higher protein from meat content"
+    
+  tofu_waste:
+    cn_ratio: 12
+    moisture_percent: 80
+    category: "processed"
+    availability: "regional"
+    notes: "Excellent protein source, very wet"
+    
+  brewery_waste:
+    cn_ratio: 15
+    moisture_percent: 75
+    category: "processed"
+    availability: "regional"
+    notes: "Good nutrition, can ferment"
+    
+  coffee_grounds:
+    cn_ratio: 22
+    moisture_percent: 60
+    category: "processed"
+    availability: "common"
+    notes: "Slightly acidic, use in moderation"
+
+  # ═══════════════════════════════════════════════════════════════
+  # MODERATE CARBON (C:N 25-40) - Needs nitrogen supplement
+  # ═══════════════════════════════════════════════════════════════
+  
+  banana_peels:
+    cn_ratio: 30
+    moisture_percent: 80
+    category: "fruit"
+    availability: "very_common"
+    notes: "Very common, high moisture, moderate carbon"
+    
+  mango_waste:
+    cn_ratio: 35
+    moisture_percent: 80
+    category: "fruit"
+    availability: "seasonal"
+    notes: "Sweet, high energy, seasonal"
+    
+  papaya_waste:
+    cn_ratio: 32
+    moisture_percent: 85
+    category: "fruit"
+    availability: "regional"
+    notes: "High moisture, contains enzymes"
+    
+  watermelon_rind:
+    cn_ratio: 30
+    moisture_percent: 90
+    category: "fruit"
+    availability: "seasonal"
+    notes: "Very high moisture, low nutrition density"
+    
+  pineapple_waste:
+    cn_ratio: 35
+    moisture_percent: 85
+    category: "fruit"
+    availability: "regional"
+    notes: "Acidic, high sugar"
+    
+  orange_peels:
+    cn_ratio: 35
+    moisture_percent: 75
+    category: "fruit"
+    availability: "common"
+    notes: "Contains limonene, may slow growth initially"
+    
+  apple_pomace:
+    cn_ratio: 30
+    moisture_percent: 80
+    category: "fruit"
+    availability: "regional"
+    notes: "Juice industry waste, good energy"
+    
+  bread_waste:
+    cn_ratio: 25
+    moisture_percent: 35
+    category: "grain_waste"
+    availability: "common"
+    notes: "High energy, can mold if too wet"
+    
+  cooked_rice:
+    cn_ratio: 35
+    moisture_percent: 65
+    category: "grain_waste"
+    availability: "very_common"
+    notes: "Common leftover, moderate nutrition"
+    
+  potato_waste:
+    cn_ratio: 28
+    moisture_percent: 80
+    category: "vegetable"
+    availability: "common"
+    notes: "High starch/energy"
+    
+  carrot_waste:
+    cn_ratio: 27
+    moisture_percent: 85
+    category: "vegetable"
+    availability: "common"
+    notes: "Good moisture and moderate nutrition"
+    
+  cabbage_waste:
+    cn_ratio: 25
+    moisture_percent: 90
+    category: "vegetable"
+    availability: "common"
+    notes: "Very high moisture"
+    
+  coconut_meat:
+    cn_ratio: 40
+    moisture_percent: 45
+    category: "fruit"
+    availability: "regional"
+    notes: "High fat content, energy-dense"
+
+  # ═══════════════════════════════════════════════════════════════
+  # HIGH CARBON (C:N > 40) - Bulking agents, need heavy nitrogen supplement
+  # ═══════════════════════════════════════════════════════════════
+  
+  rice_straw:
+    cn_ratio: 70
+    moisture_percent: 10
+    category: "agricultural"
+    availability: "common"
+    notes: "Bulking agent, very low nutrition"
+    
+  coconut_coir:
+    cn_ratio: 80
+    moisture_percent: 10
+    category: "agricultural"
+    availability: "regional"
+    notes: "Bulking/moisture retention only"
+    
+  sawdust:
+    cn_ratio: 400
+    moisture_percent: 15
+    category: "wood"
+    availability: "common"
+    notes: "Only for structure, no nutritional value"
+    
+  cardboard:
+    cn_ratio: 350
+    moisture_percent: 5
+    category: "paper"
+    availability: "common"
+    notes: "Bulking only, shred finely"
+    
+  sugarcane_bagasse:
+    cn_ratio: 100
+    moisture_percent: 50
+    category: "agricultural"
+    availability: "regional"
+    notes: "Bulking, some residual sugar"
+    
+  corn_stover:
+    cn_ratio: 60
+    moisture_percent: 15
+    category: "agricultural"
+    availability: "seasonal"
+    notes: "Bulking agent"
+
+# ═══════════════════════════════════════════════════════════════
+# BLENDING CALCULATOR FORMULA
+# ═══════════════════════════════════════════════════════════════
+#
+# To calculate blended C:N ratio:
+#
+# blended_CN = Σ(mass_i × CN_i) / Σ(mass_i)
+#
+# Example:
+#   5kg banana (CN=30) + 3kg rice bran (CN=20)
+#   = (5×30 + 3×20) / (5+3)
+#   = (150 + 60) / 8
+#   = 26.25
+#
+# To achieve target C:N:
+#   If current mix is too high (>18), add nitrogen sources
+#   If current mix is too low (<14), add carbon sources
+
+# ═══════════════════════════════════════════════════════════════
+# CATEGORY PRIORITIES (when multiple options available)
+# ═══════════════════════════════════════════════════════════════
+#
+# 1. Protein-rich waste (animal, tofu) - best for growth
+# 2. Balanced waste (bran, kitchen waste) - reliable base
+# 3. Fruit waste - good moisture, moderate nutrition  
+# 4. Pure carbon sources - only for bulking/structure
+
+# ═══════════════════════════════════════════════════════════════
+# COMMON BLENDING RECIPES
+# ═══════════════════════════════════════════════════════════════
+
+recipes:
+  optimal_growth:
+    description: "Best for maximum larvae growth"
+    target_cn: 16
+    example_mix:
+      - chicken_manure: 2kg
+      - rice_bran: 3kg
+      - vegetable_scraps: 3kg
+    notes: "High protein, balanced moisture"
+    
+  budget_friendly:
+    description: "Using commonly available waste"
+    target_cn: 22
+    example_mix:
+      - kitchen_waste_mixed: 5kg
+      - banana_peels: 3kg
+    notes: "Not optimal but accessible and cheap"
+    
+  fruit_heavy:
+    description: "When mostly fruit waste available"
+    target_cn: 25
+    example_mix:
+      - banana_peels: 4kg
+      - rice_bran: 2kg
+      - fish_waste: 1kg
+    notes: "Add protein source to balance fruit"
+    
+  restaurant_mix:
+    description: "Typical restaurant waste"
+    target_cn: 18
+    example_mix:
+      - restaurant_waste: 6kg
+      - rice_bran: 2kg
+    notes: "Usually decent protein from meat scraps"

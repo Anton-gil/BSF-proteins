@@ -1,0 +1,42 @@
+# RL Training Configuration
+
+# === PPO HYPERPARAMETERS ===
+ppo:
+  learning_rate: 0.0003
+  n_steps: 2048                    # Steps per update
+  batch_size: 64
+  n_epochs: 10                     # Epochs per update
+  gamma: 0.99                      # Discount factor
+  gae_lambda: 0.95                 # GAE parameter
+  clip_range: 0.2                  # PPO clip range
+  ent_coef: 0.01                   # Entropy coefficient
+  vf_coef: 0.5                     # Value function coefficient
+  max_grad_norm: 0.5
+
+# === NETWORK ARCHITECTURE ===
+policy:
+  type: "MlpPolicy"
+  net_arch:
+    pi: [64, 64]                   # Policy network
+    vf: [64, 64]                   # Value network
+
+# === TRAINING SETTINGS ===
+training:
+  total_timesteps: 500000          # Total training steps
+  eval_freq: 10000                 # Evaluate every N steps
+  n_eval_episodes: 10              # Episodes per evaluation
+  save_freq: 50000                 # Save model every N steps
+  log_interval: 10                 # Log every N updates
+
+# === REWARD WEIGHTS ===
+reward:
+  biomass_gain: 1.0                # α: Primary objective
+  feed_waste: 0.3                  # β: Penalty for unused feed
+  mortality: 2.0                   # γ: Penalty for deaths (high priority)
+  resource_cost: 0.1               # δ: Water, energy costs
+
+# === PATHS ===
+paths:
+  model_save_dir: "outputs/models"
+  log_dir: "outputs/logs"
+  tensorboard_dir: "outputs/logs/tensorboard"
