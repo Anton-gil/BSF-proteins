@@ -1,39 +1,68 @@
 # RL Training Configuration
+# ── v2: 1M-step retrain with reward fixes ──────────────────────────────────
 
 # === PPO HYPERPARAMETERS ===
 ppo:
-  learning_rate: 0.0003
-  n_steps: 2048                    # Steps per update
-  batch_size: 64
-  n_epochs: 10                     # Epochs per update
-  gamma: 0.99                      # Discount factor
-  gae_lambda: 0.95                 # GAE parameter
-  clip_range: 0.2                  # PPO clip range
-  ent_coef: 0.01                   # Entropy coefficient
-  vf_coef: 0.5                     # Value function coefficient
+  # Slower learning rate → more stable convergence over 1M steps.
+  # Think of it like adjusting a dial slowly vs. yanking it hard.
+  learning_rate: 0.0001
+
+  # 4096 steps collected before each brain update (was 2048).
+  # More diverse experience = more stable gradient, less variance.
+  n_steps: 4096
+
+  # Larger mini-batch → smoother gradient updates.
+  batch_size: 256
+
+  # 15 passes through the collected data per update (was 10).
+  n_epochs: 15
+
+  # Future discount factor — at 0.995, rewards 96 steps away
+  # are worth 0.995^96 = 62% (vs 0.99^96 = 38% before).
+  # Our episode is 96 steps, so we NEED to value long-term rewards.
+  gamma: 0.995
+
+  gae_lambda: 0.95                 # GAE parameter (unchanged)
+  clip_range: 0.2                  # PPO clip range (unchanged)
+
+  # Lower entropy coef = less random exploration after initial learning.
+  # Helps policy stabilize once it has found a good strategy.
+  ent_coef: 0.005
+
+  vf_coef: 0.5                     # Value function coefficient (unchanged)
   max_grad_norm: 0.5
 
 # === NETWORK ARCHITECTURE ===
 policy:
   type: "MlpPolicy"
   net_arch:
-    pi: [64, 64]                   # Policy network
-    vf: [64, 64]                   # Value network
+    # Doubled layer sizes: 64→128. The BSF environment has complex
+    # non-linear interactions (e.g. feed × temperature × moisture → growth).
+    # A wider network can capture these relationships better.
+    pi: [128, 128]                 # Policy network (what action to take)
+    vf: [128, 128]                 # Value network (how good is this state)
 
 # === TRAINING SETTINGS ===
 training:
-  total_timesteps: 500000          # Total training steps
-  eval_freq: 10000                 # Evaluate every N steps
+  total_timesteps: 1000000         # 10x more than v1 (was 100k actual, config was 500k)
+  eval_freq: 20000                 # Evaluate every 20k steps
   n_eval_episodes: 10              # Episodes per evaluation
-  save_freq: 50000                 # Save model every N steps
+  save_freq: 100000                # Save checkpoint every 100k steps
   log_interval: 10                 # Log every N updates
 
 # === REWARD WEIGHTS ===
 reward:
-  biomass_gain: 1.0                # α: Primary objective
-  feed_waste: 0.3                  # β: Penalty for unused feed
-  mortality: 2.0                   # γ: Penalty for deaths (high priority)
-  resource_cost: 0.1               # δ: Water, energy costs
+  biomass_gain: 1.0                # α: Primary objective (unchanged)
+
+  # feed_waste raised 0.3→0.5: penalize wasted substrate more.
+  feed_waste: 0.5
+
+  # mortality raised 2.0→5.0: deaths should be the AI's top fear.
+  # With the old weight (2.0) the AI could let 91% of larvae die and
+  # still break even on biomass. Now it cannot.
+  mortality: 5.0
+
+  resource_cost: 0.1               # δ: Water, energy costs (unchanged)
 
 # === PATHS ===
 paths:

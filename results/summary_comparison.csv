@@ -1,0 +1,5 @@
+strategy,avg_biomass,std_biomass,max_biomass,avg_reward,avg_feed_g,avg_mortality
+PPO Agent,110.45,37.57,151.67,-20.56,196.28,82.03
+Rule-Based,134.04,18.65,153.25,14.02,737.17,78.95
+Random,128.34,21.38,151.63,0.17,744.67,81.52
+Do-Nothing,1.96,0.28,2.44,-306.7,0.0,99.99

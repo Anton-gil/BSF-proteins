@@ -145,11 +145,14 @@ class RewardCalculator:
         # 1% death rate = -0.1 penalty, 10% = -1.0
         death_penalty = -10.0 * death_rate
 
-        # Bonus for maintaining high overall survival
+        # Continuous survival bonus — every step, the agent gets rewarded
+        # proportional to how many larvae are still alive. Previously this
+        # only kicked in above 50% survival; now it's always positive so
+        # the agent consistently associates keeping larvae alive with reward.
+        # This is called "dense reward shaping" — giving signal every step
+        # instead of waiting until the end of the 16-day cycle.
         overall_survival = curr_population / initial_population
-
-        # Small bonus for high survival (0 to 0.2)
-        survival_bonus = 0.2 * (overall_survival - 0.5) if overall_survival > 0.5 else 0
+        survival_bonus = 0.3 * overall_survival  # 0 to 0.3 every step
 
         return death_penalty + survival_bonus
 
@@ -180,9 +183,13 @@ class RewardCalculator:
             Feed efficiency reward
         """
         if feed_given_g <= 0:
-            # No feed given
+            # No feed given — raise penalty to break the starvation exploit.
+            # Previously -0.1 was cheap enough that the agent preferred zero feed
+            # over the waste penalty from overfeeding. Now it costs -0.5 per step,
+            # which is 5x more expensive than a small waste, forcing the agent
+            # to learn to feed optimally rather than not at all.
             if population > 0:
-                return -0.1  # Slight penalty for not feeding
+                return -0.5
             return 0.0
 
         # Feed waste ratio
