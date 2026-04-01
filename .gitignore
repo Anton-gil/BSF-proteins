@@ -154,5 +154,6 @@ cython_debug/
 # BSF-RL-OPTIMIZER Specific
 data/
 outputs/
+tmp/
 *.db
 *.log
