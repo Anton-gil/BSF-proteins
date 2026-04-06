@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-BSF PPO Retraining Script — v2 (1M Steps)
+BSF PPO Retraining Script — v4 (5M Steps, Rebalanced Rewards)
 
-What this does, explained simply:
-  1. Backs up your current best model (so you can compare v1 vs v2)
-  2. Creates the Gymnasium environment (the BSF farm simulation)
-  3. Creates a larger PPO neural network with better hyperparameters
-  4. Trains for 1,000,000 timesteps (each = one 4-hour BSF decision)
-  5. Saves the new best model for evaluation
+What this does:
+  1. Backs up current best model (v3 → best_model_v3.zip)
+  2. Creates 8 parallel Gymnasium environments via SubprocVecEnv
+  3. Trains for 5,000,000 timesteps with rebalanced reward weights:
+     - biomass_gain: 1.0 → 2.0 (grow larvae harder)
+     - mortality:    5.0 → 2.5 (stop starving to avoid death penalty)
+  4. Saves the new best model for evaluation
 
-Why 1M steps?
-  Each episode is 96 steps (16 days × 6 decisions/day).
-  1M steps ≈ 10,416 full episodes for the agent to learn from.
-  The previous run only managed ~1,041 full episodes — too few.
+Why 5M steps?
+  5M steps ≈ 52,083 full episodes.
+  With 8 parallel envs the speed is ~8,000 steps/sec — ~10 min on CPU.
 
 Usage:
     python scripts/retrain.py
@@ -31,7 +31,7 @@ from stable_baselines3.common.callbacks import (
     EvalCallback, CheckpointCallback, CallbackList, BaseCallback
 )
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, SubprocVecEnv
 
 from src.environments.bsf_env import BSFEnv
 
@@ -47,7 +47,8 @@ class ProgressCallback(BaseCallback):
     - Average larva survival rate
     - Average final biomass
     """
-    LOG_EVERY = 50_000
+    LOG_EVERY = 250_000  # ~every 5% of 5M steps
+    TOTAL_STEPS = 5_000_000
 
     def __init__(self):
         super().__init__()
@@ -67,13 +68,13 @@ class ProgressCallback(BaseCallback):
 
         # Print summary every LOG_EVERY steps
         if self.n_calls - self.last_log >= self.LOG_EVERY and self.ep_rewards:
-            pct = self.n_calls / 1_000_000 * 100
+            pct = self.n_calls / self.TOTAL_STEPS * 100
             recent_r   = np.mean(self.ep_rewards[-20:])
             recent_s   = np.mean(self.ep_survivals[-20:]) if self.ep_survivals else 0
             recent_b   = np.mean(self.ep_biomasses[-20:]) if self.ep_biomasses else 0
             total_eps  = len(self.ep_rewards)
 
-            print(f"\n  [{pct:5.1f}%] Step {self.n_calls:,} / 1,000,000")
+            print(f"\n  [{pct:5.1f}%] Step {self.n_calls:,} / 5,000,000")
             print(f"         Episodes trained:  {total_eps}")
             print(f"         Avg reward (last 20 eps): {recent_r:+.2f}")
             print(f"         Avg survival rate:        {recent_s:.1f}%")
@@ -109,31 +110,32 @@ def main():
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     print("\n" + "=" * 62)
-    print("  BSF-RL-OPTIMIZER — PPO Retraining (v2, 1M Steps)")
+    print("  BSF-RL-OPTIMIZER — PPO Retraining (v4, 5M Steps, Rebalanced Rewards)")
     print("=" * 62)
 
     # ── Step 1: Back up old model ─────────────────────────────────────
     old_model = MODELS_DIR / "best_model.zip"
     if old_model.exists():
-        backup = MODELS_DIR / "best_model_v1.zip"
+        backup = MODELS_DIR / "best_model_v3.zip"
         shutil.copy(old_model, backup)
         print(f"\n  [BACKUP] Old model saved to: {backup}")
     else:
         print("\n  [INFO] No existing model to back up.")
 
     # ── Step 2: Create vectorized training environment ────────────────
-    # We use DummyVecEnv (single env) since we're CPU-bound.
-    # VecNormalize scales observations and rewards to mean≈0, std≈1,
-    # which dramatically helps PPO converge — it's like standardizing
-    # input features in regular machine learning.
-    print("\n  [SETUP] Creating training environment...")
-    train_env = DummyVecEnv([make_env(0)])
+    # We use SubprocVecEnv with 8 workers so rollout collection runs
+    # across multiple CPU cores in parallel, giving ~8x faster experience
+    # collection vs a single DummyVecEnv.
+    # VecNormalize scales observations and rewards to mean≈0, std≈1.
+    N_ENVS = 8
+    print(f"\n  [SETUP] Creating {N_ENVS} parallel training environments (SubprocVecEnv)...")
+    train_env = SubprocVecEnv([make_env(i) for i in range(N_ENVS)])
     train_env = VecNormalize(
         train_env,
-        norm_obs=True,       # Normalize observations (temperature, biomass, etc.)
-        norm_reward=True,    # Normalize rewards to ~unit scale
-        clip_obs=10.0,       # Clip extreme observations
-        clip_reward=10.0,    # Clip extreme rewards
+        norm_obs=True,
+        norm_reward=True,
+        clip_obs=10.0,
+        clip_reward=10.0,
     )
 
     # Separate eval environment (not normalized by train stats, uses its own)
@@ -196,16 +198,18 @@ def main():
     callbacks = CallbackList([progress_cb, eval_cb, checkpoint_cb])
 
     # ── Step 5: Train ─────────────────────────────────────────────────
-    print(f"\n  [TRAIN] Starting 1,000,000-step training session...")
-    print(f"          Progress updates every 50,000 steps")
-    print(f"          Model auto-saved every 100,000 steps")
+    print(f"\n  [TRAIN] Starting 5,000,000-step training session...")
+    print(f"          8 parallel environments (SubprocVecEnv)")
+    print(f"          Rebalanced: biomass_gain=2.0, mortality=2.5")
+    print(f"          Progress updates every 250,000 steps")
+    print(f"          Model auto-saved every 500,000 steps")
     print(f"          Best model saved at: {MODELS_DIR}/best_model.zip\n")
     print("-" * 62)
 
     model.learn(
-        total_timesteps=1_000_000,
+        total_timesteps=5_000_000,
         callback=callbacks,
-        progress_bar=True,       # tqdm progress bar in terminal
+        progress_bar=True,
         reset_num_timesteps=True,
     )
 
@@ -213,9 +217,9 @@ def main():
     print("  [DONE] Training complete!")
 
     # ── Step 6: Save final model ──────────────────────────────────────
-    final_path = MODELS_DIR / f"bsf_ppo_v2_{ts}"
+    final_path = MODELS_DIR / f"bsf_ppo_v4_{ts}"
     model.save(str(final_path))
-    train_env.save(str(MODELS_DIR / f"bsf_ppo_v2_{ts}_vecnormalize.pkl"))
+    train_env.save(str(MODELS_DIR / f"bsf_ppo_v4_{ts}_vecnormalize.pkl"))
     print(f"  [SAVE] Final model: {final_path}.zip")
     print(f"  [SAVE] VecNormalize stats saved alongside model")
 

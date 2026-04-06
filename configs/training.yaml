@@ -1,5 +1,5 @@
 # RL Training Configuration
-# ── v2: 1M-step retrain with reward fixes ──────────────────────────────────
+# ── v4: 5M-step retrain, rebalanced biomass/mortality rewards ───────────────
 
 # === PPO HYPERPARAMETERS ===
 ppo:
@@ -44,23 +44,26 @@ policy:
 
 # === TRAINING SETTINGS ===
 training:
-  total_timesteps: 1000000         # 10x more than v1 (was 100k actual, config was 500k)
-  eval_freq: 20000                 # Evaluate every 20k steps
+  total_timesteps: 5000000         # 5M steps ≈ 52,000 full episodes
+  eval_freq: 50000                 # Evaluate every 50k steps
   n_eval_episodes: 10              # Episodes per evaluation
-  save_freq: 100000                # Save checkpoint every 100k steps
+  save_freq: 500000                # Save checkpoint every 500k steps
   log_interval: 10                 # Log every N updates
 
 # === REWARD WEIGHTS ===
 reward:
-  biomass_gain: 1.0                # α: Primary objective (unchanged)
+  # biomass_gain raised 1.0→2.0: make growing larvae the PRIMARY objective.
+  # Previously the agent could ignore growth and still get decent reward
+  # by just keeping larvae alive. Now growth is equally important.
+  biomass_gain: 2.0
 
-  # feed_waste raised 0.3→0.5: penalize wasted substrate more.
   feed_waste: 0.5
 
-  # mortality raised 2.0→5.0: deaths should be the AI's top fear.
-  # With the old weight (2.0) the AI could let 91% of larvae die and
-  # still break even on biomass. Now it cannot.
-  mortality: 5.0
+  # mortality lowered 5.0→2.5: deaths are still bad, but not so scary
+  # that the agent starves larvae to avoid the penalty. The agent was
+  # under-feeding to dodge the -5 hit — now the cost is more balanced
+  # against the +2 biomass reward it earns by actually growing them.
+  mortality: 2.5
 
   resource_cost: 0.1               # δ: Water, energy costs (unchanged)
 
