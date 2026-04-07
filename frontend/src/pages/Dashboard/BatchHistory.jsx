@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import GlassCard from '../../components/ui/GlassCard';
 import Badge from '../../components/ui/Badge';
-import { ChevronDown, Search } from 'lucide-react';
-import { getBatches } from '../../api/client';
+import { ChevronDown, Search, Trash2 } from 'lucide-react';
+import { getBatches, clearBatchHistory } from '../../api/client';
 import { useBatchStore } from '../../store/batchStore';
 
 export default function BatchHistory() {
@@ -12,7 +12,8 @@ export default function BatchHistory() {
   const [expandedRow, setExpandedRow] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const { batches, setBatches, activeBatch, setActiveBatch, currentDay } = useBatchStore();
+  const { batches, setBatches, activeBatch, setActiveBatch, currentDay, clearHistory } = useBatchStore();
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     getBatches().then((result) => {
@@ -83,16 +84,34 @@ export default function BatchHistory() {
           <h1 className="text-3xl font-display font-bold text-accent mb-2">Batch History</h1>
           <p className="text-text-muted">Review performance across all historical runs.</p>
         </div>
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input
-            type="text"
-            placeholder="Search batches..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-surface-1 border border-border rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-primary/50 w-64"
-          />
-        </div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Search batches..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="bg-surface-1 border border-border rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-primary/50 w-64"
+              />
+            </div>
+            {batches.length > 0 && (
+              <button
+                onClick={async () => {
+                  if (!window.confirm('Clear all batch history? Active batches with check-ins will be kept.')) return;
+                  setClearing(true);
+                  await clearBatchHistory();
+                  clearHistory();
+                  setClearing(false);
+                }}
+                disabled={clearing}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-sm transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                {clearing ? 'Clearing…' : 'Clear History'}
+              </button>
+            )}
+          </div>
       </div>
 
       {loading && <p className="text-text-muted">Loading batches...</p>}

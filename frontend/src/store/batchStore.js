@@ -58,6 +58,15 @@ export const useBatchStore = create(
         });
       },
 
+      clearHistory: () => {
+        const state = get();
+        // Keep only the active batch (if it has check-ins) in the list
+        const kept = state.activeBatch && state.checkIns.length > 0
+          ? [{ ...state.activeBatch, checkIns: state.checkIns }]
+          : [];
+        set({ batches: kept });
+      },
+
       endBatch: () => {
         const state = get();
         const updatedBatches = state.batches.map((b) =>

@@ -103,6 +103,16 @@ export const getReport = async () => {
   }
 };
 
+export const clearBatchHistory = async () => {
+  try {
+    const res = await client.delete('/api/batches/history');
+    if (res.error) throw res.error;
+    return { data: res.data };
+  } catch (err) {
+    return { data: { removed: 0 } };
+  }
+};
+
 export const getSettings = async () => {
   try {
     const res = await client.get('/api/settings');

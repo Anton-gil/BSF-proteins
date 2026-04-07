@@ -492,6 +492,21 @@ def get_report() -> Dict:
 
 
 # ---------------------------------------------------------------------------
+# DELETE /api/batches/history  — wipe all completed + abandoned batches
+# ---------------------------------------------------------------------------
+
+@app.delete("/api/batches/history")
+def clear_batch_history() -> Dict:
+    """Delete all completed and abandoned (no check-ins) batches. Keeps any batch that has check-ins in progress."""
+    batches: List[Dict] = _load_json(BATCHES_FILE, [])
+    kept = [b for b in batches if b.get("status") == "active" and b.get("checkIns")]
+    removed = len(batches) - len(kept)
+    _save_json(BATCHES_FILE, kept)
+    logger.info("Cleared batch history: removed %d, kept %d", removed, len(kept))
+    return {"removed": removed, "kept": len(kept)}
+
+
+# ---------------------------------------------------------------------------
 # GET /api/settings
 # ---------------------------------------------------------------------------
 
