@@ -166,3 +166,8 @@ dist/
 frontend/dist/
 frontend/node_modules/
 frontend/.env
+
+# IDE & AI tools
+.claude/
+.cursor/
+desktop.ini

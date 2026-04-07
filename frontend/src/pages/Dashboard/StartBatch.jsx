@@ -11,7 +11,7 @@ export default function StartBatch() {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { batches, setBatches } = useBatchStore();
+  const { batches, setBatches, setActiveBatch } = useBatchStore();
 
   const [formData, setFormData] = useState({
     larvaeCount: 10000,
@@ -26,8 +26,9 @@ export default function StartBatch() {
     const result = await createBatch(formData);
     if (result.data) {
       setBatches([result.data, ...batches]);
+      setActiveBatch(result.data);
     }
-    navigate('/dashboard/history');
+    navigate('/dashboard/checkin');
     setSubmitting(false);
   };
 

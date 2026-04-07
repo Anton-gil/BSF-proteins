@@ -328,8 +328,53 @@ def checkin(req: CheckInRequest) -> Dict:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/report
+# POST /api/batches/{batch_id}/checkin  — save a confirmed daily check-in
 # ---------------------------------------------------------------------------
+
+class CheckInSaveRequest(BaseModel):
+    day: int
+    feed_kg: float
+    recommendation: str
+    confirmed_at: str
+
+
+@app.post("/api/batches/{batch_id}/checkin")
+def save_daily_checkin(batch_id: str, req: CheckInSaveRequest) -> Dict:
+    """Persist a confirmed daily check-in to the batch record."""
+    batches: List[Dict] = _load_json(BATCHES_FILE, [])
+    for batch in batches:
+        if batch.get("id") == batch_id:
+            if "checkIns" not in batch:
+                batch["checkIns"] = []
+            batch["checkIns"].append(req.dict())
+            batch["currentDay"] = req.day + 1
+            # Mark completed when final day done (day 15 = 16th day, 0-indexed)
+            if req.day >= 15:
+                batch["status"] = "completed"
+                batch["duration"] = 16
+            _save_json(BATCHES_FILE, batches)
+            logger.info("Saved check-in day %d for batch %s", req.day, batch_id)
+            return batch
+    raise HTTPException(status_code=404, detail=f"Batch '{batch_id}' not found.")
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/batches/{batch_id}  — partial update
+# ---------------------------------------------------------------------------
+
+@app.patch("/api/batches/{batch_id}")
+def patch_batch(batch_id: str, updates: Dict) -> Dict:
+    """Partial update of a batch record (status, currentDay, etc.)."""
+    batches: List[Dict] = _load_json(BATCHES_FILE, [])
+    for batch in batches:
+        if batch.get("id") == batch_id:
+            batch.update(updates)
+            _save_json(BATCHES_FILE, batches)
+            logger.info("Patched batch %s: %s", batch_id, list(updates.keys()))
+            return batch
+    raise HTTPException(status_code=404, detail=f"Batch '{batch_id}' not found.")
+
+
 
 @app.get("/api/report")
 def get_report() -> Dict:

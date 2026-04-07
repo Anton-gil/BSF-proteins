@@ -70,6 +70,28 @@ export const submitCheckin = async (data) => {
   }
 };
 
+export const saveCheckin = async (batchId, data) => {
+  try {
+    const res = await client.post(`/api/batches/${batchId}/checkin`, data);
+    if (res.error) throw res.error;
+    return { data: res.data };
+  } catch (err) {
+    await delay(300);
+    return { data: { ok: true } };
+  }
+};
+
+export const updateBatch = async (batchId, updates) => {
+  try {
+    const res = await client.patch(`/api/batches/${batchId}`, updates);
+    if (res.error) throw res.error;
+    return { data: res.data };
+  } catch (err) {
+    await delay(300);
+    return { data: { ok: true } };
+  }
+};
+
 export const getReport = async () => {
   try {
     const res = await client.get('/api/report');
