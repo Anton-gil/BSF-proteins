@@ -3,8 +3,7 @@ import { Suspense } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import ParticleField from '../../components/three/ParticleField';
 import Badge from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
-import { ArrowRight, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 export default function HeroSection() {
   const shouldReduceMotion = useReducedMotion();
@@ -72,20 +71,6 @@ export default function HeroSection() {
           BSF feed recommendations powered by reinforcement learning.
         </motion.p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.5 }}
-          className="flex flex-col sm:flex-row gap-4"
-        >
-          <Button size="lg" className="group">
-            Start a Batch
-            <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-          </Button>
-          <Button variant="ghost" size="lg">
-            See How It Works
-          </Button>
-        </motion.div>
       </div>
 
       {/* Scroll indicator */}
