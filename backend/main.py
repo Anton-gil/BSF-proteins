@@ -72,6 +72,7 @@ if not SETTINGS_FILE.exists():
 # ---------------------------------------------------------------------------
 ppo_agent = None
 heuristic_policy = None
+llm_enhancer = None
 
 try:
     from src.agents.ppo_agent import BSFPPOAgent
@@ -95,6 +96,13 @@ try:
     logger.info("HeuristicPolicy loaded.")
 except Exception as exc:
     logger.error("Could not load HeuristicPolicy: %s", exc)
+
+try:
+    from src.translation.llm_enhancer import LLMEnhancer
+    llm_enhancer = LLMEnhancer()
+    logger.info("LLMEnhancer initialised (Ollama backend). Will activate on first request if Ollama is running.")
+except Exception as exc:
+    logger.warning("Could not initialise LLMEnhancer: %s", exc)
 
 # ---------------------------------------------------------------------------
 # FastAPI app
@@ -264,10 +272,11 @@ def checkin(req: CheckInRequest) -> Dict:
         )
 
         # Estimate RL observation vector
+        # Bug fix: pass actual waste_available so C:N is estimated correctly
         obs = StateEstimator().estimate_state(
             batch_info=batch_info,
             farmer_obs=farmer_obs,
-            recent_waste={},
+            recent_waste=req.waste_available,  # was {} — now uses farmer's actual selection
         )
 
         # Choose policy
@@ -275,7 +284,16 @@ def checkin(req: CheckInRequest) -> Dict:
         policy_name = settings.get("policy", "ppo")
 
         if policy_name == "ppo" and ppo_agent is not None:
-            action, _ = ppo_agent.model.predict(obs, deterministic=True)
+            # Bug fix: PPO was trained with VecNormalize — must normalize obs before predict
+            try:
+                from stable_baselines3.common.vec_env import VecNormalize
+                if isinstance(ppo_agent.env, VecNormalize):
+                    obs_norm = ppo_agent.env.normalize_obs(obs.reshape(1, -1))[0]
+                else:
+                    obs_norm = obs
+            except Exception:
+                obs_norm = obs  # fallback: use raw obs
+            action, _ = ppo_agent.model.predict(obs_norm, deterministic=True)
         else:
             if heuristic_policy is not None:
                 action = heuristic_policy.predict(obs)
@@ -284,12 +302,62 @@ def checkin(req: CheckInRequest) -> Dict:
                 action = np.array([0.5, 0.5, 0.15, 0.5], dtype=np.float32)
 
         # Generate recommendation
+        # waste_available has form {id: kg} — pass keys for waste mix selection
         rec = RecommendationGenerator().generate(
             action=action,
             available_wastes=list(req.waste_available.keys()),
             larvae_count=req.estimated_larvae_count,
             age_days=req.age_days,
         )
+
+        # Bug fix: split feed across AM/PM (60%/40%), evening = moisture/aeration only
+        total_kg = sum(rec.feed_amounts.values()) if rec.feed_amounts else 0.0
+        am_amounts = {k: round(v * 0.6, 3) for k, v in rec.feed_amounts.items()}
+        pm_amounts = {k: round(v * 0.4, 3) for k, v in rec.feed_amounts.items()}
+
+        from src.translation.waste_translator import WasteTranslator
+        _wt = WasteTranslator()
+        am_instruction = _wt.format_mix_instructions(am_amounts) if am_amounts else "No morning feed"
+        pm_instruction = _wt.format_mix_instructions(pm_amounts) if pm_amounts else "No afternoon feed"
+
+        # Bug fix: projection uses logistic growth curve instead of CN * 8
+        # Logistic: K=150mg, r=0.5, t0=7 days
+        K, r, t0 = 150.0, 0.5, 7.0
+        days_remaining = max(0.0, 16.0 - req.age_days)
+        expected_biomass_at_harvest = K / (1.0 + np.exp(-r * (16.0 - t0)))
+        # Adjust for confidence (lower confidence → more conservative estimate)
+        expected_biomass_at_harvest = round(expected_biomass_at_harvest * (0.7 + 0.3 * rec.confidence), 1)
+
+        # Determine trajectory from current biomass vs ideal curve
+        ideal_now = K / (1.0 + np.exp(-r * (req.age_days - t0)))
+        current_biomass = float(obs[1])   # obs[1] = biomass_mg from state estimator
+        if current_biomass >= ideal_now * 0.95:
+            trajectory = "On Track 🟢"
+        elif current_biomass >= ideal_now * 0.75:
+            trajectory = "Slightly Behind 🟡"
+        else:
+            trajectory = "Needs Attention 🔴"
+
+        # LLM coach message — context-aware, empathetic natural language
+        coach_message: Optional[str] = None
+        if llm_enhancer is not None:
+            try:
+                coach_message = llm_enhancer.enhance(
+                    mortality=req.mortality_estimate,
+                    activity=req.larvae_activity,
+                    substrate=req.substrate_condition,
+                    smell=req.smell,
+                    age_days=req.age_days,
+                    feed_instruction=rec.feed_instruction,
+                    moisture_action=rec.moisture_action,
+                    aeration_action=rec.aeration_action,
+                    notes=rec.notes,
+                    confidence=rec.confidence,
+                    trajectory=trajectory,
+                    available_wastes=list(req.waste_available.keys()),
+                )
+            except Exception as llm_exc:
+                logger.warning("LLM enhancement failed: %s", llm_exc)
 
         return {
             "feed_instruction": rec.feed_instruction,
@@ -299,26 +367,27 @@ def checkin(req: CheckInRequest) -> Dict:
             "aeration_action": rec.aeration_action,
             "notes": rec.notes,
             "confidence": rec.confidence,
+            "coach_message": coach_message,   # None if Ollama not running
             "schedule": [
                 {
                     "time": "08:00 AM",
-                    "mix": rec.feed_instruction,
+                    "mix": am_instruction,
                     "h2o": rec.moisture_action,
                 },
                 {
                     "time": "02:00 PM",
-                    "mix": rec.feed_instruction,
-                    "h2o": "Monitor substrate",
+                    "mix": pm_instruction,
+                    "h2o": "Monitor substrate moisture",
                 },
                 {
                     "time": "06:00 PM",
-                    "mix": "No evening feed",
+                    "mix": "No evening feed — larvae rest phase",
                     "h2o": rec.aeration_action,
                 },
             ],
             "projection": {
-                "expected": round(rec.target_cn * 8, 1),
-                "trajectory": "Optimal" if rec.confidence > 0.75 else "Normal",
+                "expected": expected_biomass_at_harvest,
+                "trajectory": trajectory,
             },
         }
 
@@ -397,21 +466,28 @@ def get_report() -> Dict:
                 )
     except Exception as exc:
         logger.error("Could not read results CSV: %s", exc)
-        # Return hardcoded fallback so dashboard never breaks
+        # Fallback values — exact copy of results/summary_comparison.csv
         strategies = [
-            {"name": "PPO Agent",  "avg_biomass": 148.2,  "std_biomass": 9.64,  "max_biomass": 153.14, "avg_reward": 89.14,   "avg_feed_g": 507.69, "avg_mortality": 67.78},
-            {"name": "Rule-Based", "avg_biomass": 134.04, "std_biomass": 18.65, "max_biomass": 153.25, "avg_reward": 63.07,   "avg_feed_g": 737.17, "avg_mortality": 78.95},
-            {"name": "Random",     "avg_biomass": 128.34, "std_biomass": 21.38, "max_biomass": 151.63, "avg_reward": 52.66,   "avg_feed_g": 744.67, "avg_mortality": 81.52},
-            {"name": "Do-Nothing", "avg_biomass": 1.96,   "std_biomass": 0.28,  "max_biomass": 2.44,   "avg_reward": -162.88, "avg_feed_g": 0.0,    "avg_mortality": 99.99},
+            {"name": "PPO Agent",  "avg_biomass": 110.45, "std_biomass": 37.57, "max_biomass": 151.67, "avg_reward":   30.22, "avg_feed_g": 196.28, "avg_mortality": 82.03},
+            {"name": "Rule-Based", "avg_biomass": 134.04, "std_biomass": 18.65, "max_biomass": 153.25, "avg_reward":   63.07, "avg_feed_g": 737.17, "avg_mortality": 78.95},
+            {"name": "Random",     "avg_biomass": 128.34, "std_biomass": 21.38, "max_biomass": 151.63, "avg_reward":   52.66, "avg_feed_g": 744.67, "avg_mortality": 81.52},
+            {"name": "Do-Nothing", "avg_biomass":   1.96, "std_biomass":  0.28, "max_biomass":   2.44, "avg_reward": -162.88, "avg_feed_g":   0.00, "avg_mortality": 99.99},
         ]
+
+    # Compute highlights from actual strategy data (not hardcoded)
+    ppo  = next((s for s in strategies if s["name"] == "PPO Agent"),  None)
+    rule = next((s for s in strategies if s["name"] == "Rule-Based"), None)
+    highlights = {}
+    if ppo and rule and rule["avg_feed_g"] > 0:
+        highlights = {
+            "feed_savings_pct":        round((rule["avg_feed_g"] - ppo["avg_feed_g"]) / rule["avg_feed_g"] * 100, 1),
+            "biomass_advantage_mg":    round(ppo["avg_biomass"] - rule["avg_biomass"], 2),
+            "mortality_change_pct":    round(rule["avg_mortality"] - ppo["avg_mortality"], 2),
+        }
 
     return {
         "strategies": strategies,
-        "highlights": {
-            "feed_savings_pct": 31,
-            "biomass_advantage_mg": 14.2,
-            "survival_improvement_pct": 11.2,
-        },
+        "highlights": highlights,
     }
 
 

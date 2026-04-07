@@ -41,8 +41,9 @@ class RecommendationGenerator:
         print(gen.format_recommendation(rec))
     """
 
-    # C:N action [0] maps linearly: 0 → CN=10, 1 → CN=30
-    _CN_MIN, _CN_MAX = 10.0, 30.0
+    # C:N action [0] maps linearly: must MATCH BSFEnv._scale_action (cn_range = 15–25)
+    # BSFEnv: base_cn=20, adjustment=[-5,+5] → range [15, 25]
+    _CN_MIN, _CN_MAX = 15.0, 25.0
 
     _MOISTURE_ACTIONS = {
         0: ("No action needed",
@@ -79,7 +80,12 @@ class RecommendationGenerator:
             (target_cn, feed_multiplier, moisture_idx, aeration_idx)
         """
         target_cn = self._CN_MIN + action[0] * (self._CN_MAX - self._CN_MIN)
-        feed_mult = float(action[1]) * 2.0   # [0, 2]
+
+        # Feed multiplier: matches BSFEnv feed_range (0.5–2.0), threshold < 0.1 → no feed
+        if action[1] < 0.1:
+            feed_mult = 0.0
+        else:
+            feed_mult = 0.5 + float(action[1]) * 1.5   # [0.1..1.0] → [0.5..2.0]
 
         moist_idx = 0 if action[2] < 0.33 else (1 if action[2] < 0.67 else 2)
         aer_idx   = 0 if action[3] < 0.33 else (1 if action[3] < 0.67 else 2)

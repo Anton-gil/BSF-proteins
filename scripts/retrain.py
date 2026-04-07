@@ -116,7 +116,7 @@ def main():
     # ── Step 1: Back up old model ─────────────────────────────────────
     old_model = MODELS_DIR / "best_model.zip"
     if old_model.exists():
-        backup = MODELS_DIR / "best_model_v3.zip"
+        backup = MODELS_DIR / "best_model_v4_backup.zip"
         shutil.copy(old_model, backup)
         print(f"\n  [BACKUP] Old model saved to: {backup}")
     else:
@@ -200,9 +200,9 @@ def main():
     # ── Step 5: Train ─────────────────────────────────────────────────
     print(f"\n  [TRAIN] Starting 5,000,000-step training session...")
     print(f"          8 parallel environments (SubprocVecEnv)")
-    print(f"          Rebalanced: biomass_gain=2.0, mortality=2.5")
+    print(f"          Rebalanced: biomass_gain=3.5, feed_waste=0.1, mortality=1.5")
+    print(f"          (Weights read from configs/training.yaml via reward.py)")
     print(f"          Progress updates every 250,000 steps")
-    print(f"          Model auto-saved every 500,000 steps")
     print(f"          Best model saved at: {MODELS_DIR}/best_model.zip\n")
     print("-" * 62)
 
@@ -217,9 +217,9 @@ def main():
     print("  [DONE] Training complete!")
 
     # ── Step 6: Save final model ──────────────────────────────────────
-    final_path = MODELS_DIR / f"bsf_ppo_v4_{ts}"
+    final_path = MODELS_DIR / f"bsf_ppo_v5_{ts}"
     model.save(str(final_path))
-    train_env.save(str(MODELS_DIR / f"bsf_ppo_v4_{ts}_vecnormalize.pkl"))
+    train_env.save(str(MODELS_DIR / f"bsf_ppo_v5_{ts}_vecnormalize.pkl"))
     print(f"  [SAVE] Final model: {final_path}.zip")
     print(f"  [SAVE] VecNormalize stats saved alongside model")
 
@@ -233,7 +233,7 @@ def main():
         print(f"    Biomass:  {np.mean(last50_b):.1f} mg ± {np.std(last50_b):.1f}")
         print(f"    Survival: {np.mean(last50_s):.1f}%")
 
-    print("\n  Next step: run  python results/run_real_evaluation.py")
+    print("\n  Next step: run  python scripts/evaluate.py")
     print("=" * 62 + "\n")
 
 

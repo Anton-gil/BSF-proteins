@@ -46,26 +46,28 @@ policy:
 training:
   total_timesteps: 5000000         # 5M steps ≈ 52,000 full episodes
   eval_freq: 50000                 # Evaluate every 50k steps
-  n_eval_episodes: 10              # Episodes per evaluation
+  n_eval_episodes: 20              # Increased: more episodes = more reliable best_model selection
   save_freq: 500000                # Save checkpoint every 500k steps
   log_interval: 10                 # Log every N updates
 
 # === REWARD WEIGHTS ===
 reward:
-  # biomass_gain raised 1.0→2.0: make growing larvae the PRIMARY objective.
-  # Previously the agent could ignore growth and still get decent reward
-  # by just keeping larvae alive. Now growth is equally important.
-  biomass_gain: 2.0
+  # biomass_gain raised 2.0→3.5: BIOMASS IS THE PRIMARY OBJECTIVE.
+  # The PPO was hoarding feed (using only 196g vs Rule-Based 737g) because
+  # feed_waste penalties outweighed the growth reward. Now growth pays 3.5x.
+  biomass_gain: 3.5
 
-  feed_waste: 0.5
+  # feed_waste lowered 0.5→0.1: stop penalizing feeding.
+  # The exploit was: give tiny feed → good FCR → decent reward, even with
+  # poor growth. At 0.1 weight this penalty barely influences decisions.
+  feed_waste: 0.1
 
-  # mortality lowered 5.0→2.5: deaths are still bad, but not so scary
-  # that the agent starves larvae to avoid the penalty. The agent was
-  # under-feeding to dodge the -5 hit — now the cost is more balanced
-  # against the +2 biomass reward it earns by actually growing them.
-  mortality: 2.5
+  # mortality lowered further 2.5→1.5: the agent was starving larvae
+  # (to reduce mortality risk from crowding) rather than feeding them well.
+  # Mortality is still penalized, just not enough to drive starvation.
+  mortality: 1.5
 
-  resource_cost: 0.1               # δ: Water, energy costs (unchanged)
+  resource_cost: 0.05              # δ: Small — don't let water cost discourage feeding
 
 # === PATHS ===
 paths:

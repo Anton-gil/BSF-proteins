@@ -40,11 +40,64 @@ export default function DailyCheckin() {
   const batchId = activeBatch.id;
   const larvaeCount = activeBatch.larvaeCount || 10000;
 
-  // Waste types
-  const wasteTypes = [
-    "Vegetable Scraps", "Fruit Waste", "Bakery Waste",
-    "Spent Grain", "Coffee Grounds", "Manure"
+  // All waste types from waste_lookup.yaml — grouped by category with C:N info
+  const wasteCategories = [
+    {
+      label: '🐓 High Nitrogen (C:N 3–15) — Best for protein growth',
+      items: [
+        { id: 'chicken_manure',        label: 'Chicken Manure',         cn: 8  },
+        { id: 'fish_waste',            label: 'Fish Waste',             cn: 6  },
+        { id: 'fish_meal',             label: 'Fish Meal',              cn: 5  },
+        { id: 'blood_meal',            label: 'Blood Meal',             cn: 3  },
+        { id: 'shrimp_waste',          label: 'Shrimp Waste',           cn: 7  },
+        { id: 'meat_scraps',           label: 'Meat Scraps',            cn: 6  },
+        { id: 'egg_waste',             label: 'Egg Waste / Shells',     cn: 5  },
+      ]
+    },
+    {
+      label: '⚖️ Balanced (C:N 15–25) — Reliable base feed',
+      items: [
+        { id: 'rice_bran',             label: 'Rice Bran',              cn: 20 },
+        { id: 'wheat_bran',            label: 'Wheat Bran',             cn: 18 },
+        { id: 'vegetable_scraps_mixed',label: 'Mixed Vegetable Scraps', cn: 20 },
+        { id: 'kitchen_waste_mixed',   label: 'Mixed Kitchen Waste',    cn: 18 },
+        { id: 'restaurant_waste',      label: 'Restaurant Waste',       cn: 15 },
+        { id: 'tofu_waste',            label: 'Tofu Waste / Okara',     cn: 12 },
+        { id: 'brewery_waste',         label: 'Brewery / Spent Grain',  cn: 15 },
+        { id: 'coffee_grounds',        label: 'Coffee Grounds',         cn: 22 },
+      ]
+    },
+    {
+      label: '🍌 Moderate Carbon (C:N 25–40) — Needs nitrogen supplement',
+      items: [
+        { id: 'banana_peels',          label: 'Banana Peels',           cn: 30 },
+        { id: 'mango_waste',           label: 'Mango Waste',            cn: 35 },
+        { id: 'papaya_waste',          label: 'Papaya Waste',           cn: 32 },
+        { id: 'watermelon_rind',       label: 'Watermelon Rind',        cn: 30 },
+        { id: 'pineapple_waste',       label: 'Pineapple Waste',        cn: 35 },
+        { id: 'orange_peels',          label: 'Orange Peels',           cn: 35 },
+        { id: 'apple_pomace',          label: 'Apple Pomace',           cn: 30 },
+        { id: 'bread_waste',           label: 'Bread Waste',            cn: 25 },
+        { id: 'cooked_rice',           label: 'Cooked Rice (leftover)', cn: 35 },
+        { id: 'potato_waste',          label: 'Potato Waste',           cn: 28 },
+        { id: 'carrot_waste',          label: 'Carrot Waste',           cn: 27 },
+        { id: 'cabbage_waste',         label: 'Cabbage Waste',          cn: 25 },
+        { id: 'coconut_meat',          label: 'Coconut Meat Waste',     cn: 40 },
+      ]
+    },
+    {
+      label: '🌾 High Carbon (C:N > 40) — Bulking agents only',
+      items: [
+        { id: 'rice_straw',            label: 'Rice Straw',             cn: 70  },
+        { id: 'coconut_coir',          label: 'Coconut Coir',           cn: 80  },
+        { id: 'sugarcane_bagasse',     label: 'Sugarcane Bagasse',      cn: 100 },
+        { id: 'corn_stover',           label: 'Corn Stover',            cn: 60  },
+      ]
+    },
   ];
+
+  // Flat list for lookup
+  const allWasteItems = wasteCategories.flatMap(c => c.items);
 
   const handleWasteSelect = (type) => {
     if (waste[type] !== undefined) {
@@ -240,44 +293,91 @@ export default function DailyCheckin() {
               className="flex flex-col items-start gap-4"
             >
               <div className="bg-surface-2 p-4 rounded-2xl rounded-tl-none border border-border max-w-[80%]">
-                <p className="text-text">Great. What waste is available to feed them today?</p>
+                <p className="text-text">
+                  {status === 'Active & healthy'
+                    ? 'Good to hear! What waste is available to feed them today?'
+                    : status === 'A few deaths'
+                    ? 'Noted — some mortality is normal at this stage. What waste do you have available today?'
+                    : status === 'Many deaths'
+                    ? 'That\'s concerning. Let\'s get you the right feeding plan — what waste is available today?'
+                    : 'Understood. What waste is available to feed them today?'}
+                </p>
               </div>
 
               {step === 2 && (
                 <GlassCard className="p-6 self-end w-[90%] border-primary/30">
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {wasteTypes.map((type) => {
-                      const isActive = waste[type] !== undefined;
-                      const cls = "px-3 py-1.5 rounded-lg text-sm border transition-colors " +
-                        (isActive
-                          ? "bg-primary/20 border-primary text-primary font-medium"
-                          : "bg-transparent border-border text-text-muted hover:border-primary/50");
-                      return (
-                        <button
-                          key={type}
-                          onClick={() => handleWasteSelect(type)}
-                          className={cls}
-                        >
-                          {type}
-                        </button>
-                      );
-                    })}
+
+                  {/* Live C:N blended display */}
+                  {Object.keys(waste).length > 0 && (() => {
+                    const entries = Object.entries(waste);
+                    const totalKg = entries.reduce((s, [, kg]) => s + kg, 0);
+                    const blendedCN = totalKg > 0
+                      ? entries.reduce((s, [id, kg]) => {
+                          const item = allWasteItems.find(w => w.id === id);
+                          return s + (item?.cn || 20) * kg;
+                        }, 0) / totalKg
+                      : 0;
+                    const cnColor = blendedCN >= 14 && blendedCN <= 18 ? 'text-primary' : (blendedCN >= 10 && blendedCN <= 30) ? 'text-yellow-400' : 'text-red-400';
+                    return (
+                      <div className="mb-4 p-3 rounded-lg bg-surface-2 border border-border flex justify-between items-center text-sm">
+                        <span className="text-text-muted">Blended C:N Ratio</span>
+                        <span className={`font-bold text-lg ${cnColor}`}>
+                          {blendedCN.toFixed(1)}:1
+                          {blendedCN >= 14 && blendedCN <= 18 && ' ✅ Optimal'}
+                          {((blendedCN >= 10 && blendedCN < 14) || (blendedCN > 18 && blendedCN <= 30)) && ' ⚠️ Acceptable'}
+                          {(blendedCN < 10 || blendedCN > 30) && ' ❌ Poor'}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Grouped waste categories */}
+                  <div className="space-y-5 mb-6 max-h-80 overflow-y-auto pr-1">
+                    {wasteCategories.map((cat) => (
+                      <div key={cat.label}>
+                        <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">{cat.label}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {cat.items.map(({ id, label, cn }) => {
+                            const isActive = waste[id] !== undefined;
+                            return (
+                              <button
+                                key={id}
+                                onClick={() => handleWasteSelect(id)}
+                                className={
+                                  "px-3 py-1.5 rounded-lg text-sm border transition-colors flex items-center gap-1.5 " +
+                                  (isActive
+                                    ? "bg-primary/20 border-primary text-primary font-medium"
+                                    : "bg-transparent border-border text-text-muted hover:border-primary/50")
+                                }
+                              >
+                                {label}
+                                <span className="text-[10px] opacity-60 font-mono">{cn}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
+                  {/* Quantity inputs */}
                   {Object.keys(waste).length > 0 && (
                     <div className="space-y-3 mb-6">
                       <p className="text-xs font-bold text-text-muted uppercase tracking-wider">Quantities (kg)</p>
-                      {Object.keys(waste).map((type) => (
-                        <div key={type} className="flex justify-between items-center bg-surface-2 p-2 rounded border border-border">
-                          <span className="text-sm">{type}</span>
-                          <input
-                            type="number"
-                            value={waste[type]}
-                            onChange={(e) => handleUpdateQuantity(type, e.target.value)}
-                            className="bg-bg border border-border rounded w-20 text-center text-sm py-1 focus:outline-none focus:border-primary"
-                          />
-                        </div>
-                      ))}
+                      {Object.keys(waste).map((id) => {
+                        const item = allWasteItems.find(w => w.id === id);
+                        return (
+                          <div key={id} className="flex justify-between items-center bg-surface-2 p-2 rounded border border-border">
+                            <span className="text-sm">{item?.label || id}</span>
+                            <input
+                              type="number"
+                              value={waste[id]}
+                              onChange={(e) => handleUpdateQuantity(id, e.target.value)}
+                              className="bg-bg border border-border rounded w-20 text-center text-sm py-1 focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -321,12 +421,49 @@ export default function DailyCheckin() {
                 <p className="text-primary font-medium">Here is your optimal schedule for Day {currentDay}.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full self-end mt-4">
-                {(apiResult?.schedule ?? [
-                  { time: '08:00 AM', mix: '2kg Veg + 1kg Bakery', h2o: '+500ml H2O' },
-                  { time: '02:00 PM', mix: '3kg Fruit', h2o: 'No added water' },
-                  { time: '06:00 PM', mix: '1kg Spent Grain', h2o: '+200ml H2O' }
-                ]).map((feeding, i) => (
+              {/* Target C:N + Confidence row */}
+              {apiResult && (
+                <div className="flex flex-wrap gap-3 w-full self-end">
+                  <div className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm">
+                    <span className="text-text-muted">Target C:N:</span>
+                    <span className="font-bold text-primary">{apiResult.target_cn?.toFixed(1)}:1</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm">
+                    <span className="text-text-muted">Confidence:</span>
+                    <span className="font-bold text-primary">{Math.round((apiResult.confidence ?? 0) * 100)}%</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm">
+                    <span className="text-text-muted">Moisture:</span>
+                    <span className="font-bold text-cyan-400">{apiResult.moisture_action}</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm">
+                    <span className="text-text-muted">Aeration:</span>
+                    <span className="font-bold text-cyan-400">{apiResult.aeration_action}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* LLM Coach Message */}
+              {apiResult?.coach_message && (
+                <div className="w-full self-end bg-primary/5 border border-primary/25 rounded-xl p-4 text-sm text-text leading-relaxed">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-primary text-xs font-bold uppercase tracking-wider">AI Coach</span>
+                    <span className="text-[10px] text-text-muted bg-surface-2 px-2 py-0.5 rounded-full">local model</span>
+                  </div>
+                  <p className="text-text-muted">{apiResult.coach_message}</p>
+                </div>
+              )}
+
+              {/* Notes from AI */}
+              {apiResult?.notes?.length > 0 && (
+                <div className="w-full self-end bg-yellow-400/10 border border-yellow-400/30 rounded-lg p-3 text-sm text-yellow-300">
+                  <span className="font-bold">⚠️ Notes: </span>
+                  {apiResult.notes.join(' • ')}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full self-end mt-2">
+                {(apiResult?.schedule ?? []).map((feeding, i) => (
                   <GlassCard key={i} className="p-5 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-1 h-full bg-primary/50 group-hover:bg-primary transition-colors" />
                     <div className="text-xl font-display font-bold text-accent mb-1">{feeding.time}</div>
@@ -340,8 +477,11 @@ export default function DailyCheckin() {
 
               <div className="w-full mt-4 p-4 rounded-lg bg-surface-2 border border-border flex justify-between items-center">
                 <div>
-                  <div className="text-sm font-bold">Tomorrow's Projection</div>
-                  <div className="text-xs text-text-muted mt-1">Expected Biomass: <span className="text-primary font-bold">{apiResult?.projection?.expected ?? '48mg'}</span> • Trajectory: <span className="text-primary font-bold">{apiResult?.projection?.trajectory ?? 'Optimal'}</span></div>
+                  <div className="text-sm font-bold">Harvest-Day Biomass Projection</div>
+                  <div className="text-xs text-text-muted mt-1">
+                    Expected at Day 16: <span className="text-primary font-bold">{apiResult?.projection?.expected ?? '—'} mg</span>
+                    {' '}• Trajectory: <span className="text-primary font-bold">{apiResult?.projection?.trajectory ?? '—'}</span>
+                  </div>
                 </div>
                 <Button onClick={handleCompleteCheckin}>
                   {currentDay >= 15 ? '🎉 Complete Batch' : '✅ Complete Check-in'}
