@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #84cc16;
+    --color-primary-bright: #a3e635;
+    --color-bg: #050a05;
+    --color-surface: #0d1a0d;
+    --color-surface-2: #132013;
+    --color-border: rgba(132, 204, 22, 0.15);
+    --color-text: #f0fdf0;
+    --color-text-muted: #6b7280;
+    --color-accent: #ffffff;
+  }
+
+  body {
+    @apply bg-bg text-text font-sans antialiased overflow-x-hidden;
+    /* Custom cursor hide */
+    cursor: none;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-accent;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Replaced with a React component wrapper, but keep this utility just in case */
+  .glass-card {
+    @apply bg-surface/60 backdrop-blur-md border border-primary/15 rounded-2xl;
+  }
+  
+  .glass-card:hover {
+    box-shadow: 0 0 20px rgba(132, 204, 22, 0.3);
+  }
+}
+
+/* Base custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-bg;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-2 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/50;
+}

@@ -157,3 +157,12 @@ outputs/
 tmp/
 *.db
 *.log
+
+# Frontend & General
+node_modules/
+dist/
+.DS_Store
+.env
+frontend/dist/
+frontend/node_modules/
+frontend/.env
