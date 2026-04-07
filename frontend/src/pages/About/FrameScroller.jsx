@@ -194,7 +194,7 @@ export default function FrameScroller() {
   return (
     <div 
       ref={containerRef} 
-      style={{ height: `${FRAME_COUNT * 12 + window.innerHeight}px` }} 
+      style={{ height: `${FRAME_COUNT * 24 + window.innerHeight}px` }} 
       className="relative w-full"
     >
       <div className="sticky top-0 w-full h-screen overflow-hidden">

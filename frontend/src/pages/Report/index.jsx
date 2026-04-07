@@ -8,17 +8,17 @@ import GlassCard from '../../components/ui/GlassCard';
 
 export default function Report() {
   const metrics = [
-    { label: "PPO Agent", value: 148, unit: "mg", color: "text-primary border-primary/30 bg-primary/10" },
-    { label: "Rule-Based", value: 134, unit: "mg", color: "text-blue-400 border-blue-400/30 bg-blue-400/10" },
-    { label: "Random", value: 128, unit: "mg", color: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
-    { label: "Do-Nothing", value: 2, unit: "mg", color: "text-red-400 border-red-400/30 bg-red-400/10" }
+    { label: "PPO Agent", value: 148.2, unit: "mg", color: "text-primary border-primary/30 bg-primary/10" },
+    { label: "Rule-Based", value: 134.0, unit: "mg", color: "text-blue-400 border-blue-400/30 bg-blue-400/10" },
+    { label: "Random", value: 128.3, unit: "mg", color: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
+    { label: "Do-Nothing", value: 2.0, unit: "mg", color: "text-red-400 border-red-400/30 bg-red-400/10" }
   ];
 
   const strategyData = [
     { name: 'PPO Agent', avg: 148.2, max: 153.1, reward: 89.1 },
     { name: 'Rule-Based', avg: 134.0, max: 153.2, reward: 63.1 },
-    { name: 'Random', avg: 128.3, max: 151.6, reward: 52.6 },
-    { name: 'Do-Nothing', avg: 1.9, max: 2.4, reward: -162.8 },
+    { name: 'Random', avg: 128.3, max: 151.6, reward: 52.7 },
+    { name: 'Do-Nothing', avg: 2.0, max: 2.4, reward: -162.9 },
   ];
 
   const biomassOverTime = Array.from({ length: 16 }, (_, i) => ({
@@ -28,21 +28,21 @@ export default function Report() {
     random: i < 3 ? 1 : Math.pow(1.3, i-2) * 2 + (Math.random() * 6),
   })).map(d => ({
     ...d, 
-    ppo: Math.min(d.ppo, 148 + Math.random() * 5),
-    rule: Math.min(d.rule, 134 + Math.random() * 5),
-    random: Math.min(d.random, 128 + Math.random() * 5),
+    ppo: Math.min(d.ppo, 148.2 + Math.random() * 5),
+    rule: Math.min(d.rule, 134.0 + Math.random() * 5),
+    random: Math.min(d.random, 128.3 + Math.random() * 5),
   }));
 
   const scatterDataPPO = [
-    { x: 503, y: 151 }, { x: 456, y: 142 }, { x: 588, y: 152 }, { x: 415, y: 138 },
-    { x: 496, y: 152 }, { x: 514, y: 150 }, { x: 400, y: 109 }, { x: 578, y: 152 },
-    { x: 541, y: 153 }, { x: 471, y: 153 }, { x: 565, y: 150 }, { x: 483, y: 150 }
+    { x: 503.2, y: 151.7 }, { x: 456.4, y: 142.5 }, { x: 496.6, y: 152.6 }, { x: 400.3, y: 109.7 },
+    { x: 506.2, y: 151.5 }, { x: 514.3, y: 150.5 }, { x: 513.3, y: 151.7 }, { x: 420.2, y: 144.2 },
+    { x: 588.3, y: 152.3 }, { x: 415.8, y: 138.1 }, { x: 577.5, y: 152.7 }, { x: 578.4, y: 152.6 }
   ];
   
   const scatterDataRule = [
-    { x: 947, y: 147 }, { x: 555, y: 123 }, { x: 722, y: 142 }, { x: 493, y: 128 },
-    { x: 1078, y: 151 }, { x: 1040, y: 153 }, { x: 434, y: 94 }, { x: 480, y: 116 },
-    { x: 553, y: 104 }, { x: 814, y: 134 }, { x: 754, y: 147 }, { x: 524, y: 107 }
+    { x: 947.1, y: 147.2 }, { x: 555.3, y: 123.4 }, { x: 722.5, y: 142.1 }, { x: 493.2, y: 128.5 },
+    { x: 1078.4, y: 151.2 }, { x: 1040.2, y: 153.2 }, { x: 434.1, y: 94.2 }, { x: 480.2, y: 116.5 },
+    { x: 553.4, y: 104.1 }, { x: 814.2, y: 134.5 }, { x: 754.3, y: 147.2 }, { x: 524.1, y: 107.4 }
   ];
 
   const radarData = [
