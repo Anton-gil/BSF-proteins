@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
+import { submitCheckin } from '../../api/client';
+import { useBatchStore } from '../../store/batchStore';
 
 export default function DailyCheckin() {
   const [step, setStep] = useState(1);
   const [status, setStatus] = useState(null);
   const [waste, setWaste] = useState({});
   const [isCalculating, setIsCalculating] = useState(false);
+  const [apiResult, setApiResult] = useState(null);
+  const { setTodaySchedule } = useBatchStore();
 
   // Mock waste types
   const wasteTypes = [
@@ -29,13 +33,23 @@ export default function DailyCheckin() {
     setWaste({ ...waste, [type]: parseInt(val) || 0 });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setIsCalculating(true);
     setStep(3);
-    setTimeout(() => {
-      setIsCalculating(false);
-      setStep(4);
-    }, 2000);
+    const payload = {
+      batch_id: "active",
+      larvae_activity: status === 'Active & healthy' ? 'very_active' : status === 'A few deaths' ? 'normal' : 'sluggish',
+      mortality_estimate: status === 'Active & healthy' ? 'none' : status === 'A few deaths' ? 'few' : status === 'Many deaths' ? 'many' : 'some',
+      substrate_condition: 'good',
+      smell: 'normal',
+      waste_available: waste,
+      estimated_larvae_count: 1000,
+      age_days: 8
+    };
+    const result = await submitCheckin(payload);
+    setApiResult(result.data);
+    setIsCalculating(false);
+    setStep(4);
   };
 
   return (
@@ -174,11 +188,11 @@ export default function DailyCheckin() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full self-end mt-4">
-                {[
+                {(apiResult?.schedule ?? [
                   { time: '08:00 AM', mix: '2kg Veg + 1kg Bakery', h2o: '+500ml H2O' },
                   { time: '02:00 PM', mix: '3kg Fruit', h2o: 'No added water' },
                   { time: '06:00 PM', mix: '1kg Spent Grain', h2o: '+200ml H2O' }
-                ].map((feeding, i) => (
+                ]).map((feeding, i) => (
                   <GlassCard key={i} className="p-5 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-1 h-full bg-primary/50 group-hover:bg-primary transition-colors" />
                     <div className="text-xl font-display font-bold text-accent mb-1">{feeding.time}</div>
@@ -189,11 +203,11 @@ export default function DailyCheckin() {
                   </GlassCard>
                 ))}
               </div>
-              
+
               <div className="w-full mt-4 p-4 rounded-lg bg-surface-2 border border-border flex justify-between items-center">
                 <div>
                   <div className="text-sm font-bold">Tomorrow's Projection</div>
-                  <div className="text-xs text-text-muted mt-1">Expected Biomass: <span className="text-primary font-bold">48mg</span> • Trajectory: <span className="text-primary font-bold">Optimal</span></div>
+                  <div className="text-xs text-text-muted mt-1">Expected Biomass: <span className="text-primary font-bold">{apiResult?.projection?.expected ?? '48mg'}</span> • Trajectory: <span className="text-primary font-bold">{apiResult?.projection?.trajectory ?? 'Optimal'}</span></div>
                 </div>
                 <Button variant="ghost">Complete Check-in</Button>
               </div>

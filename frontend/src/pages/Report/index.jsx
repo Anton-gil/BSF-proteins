@@ -1,25 +1,58 @@
-import { 
+import { useState, useEffect } from 'react';
+import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
-  ScatterChart, Scatter, ZAxis, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
+  ScatterChart, Scatter, ZAxis, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
 import { motion } from 'framer-motion';
 import PageTransition from '../../components/ui/PageTransition';
 import GlassCard from '../../components/ui/GlassCard';
+import { getReport } from '../../api/client';
+
+const STRATEGY_COLORS = {
+  "PPO Agent":  "text-primary border-primary/30 bg-primary/10",
+  "Rule-Based": "text-blue-400 border-blue-400/30 bg-blue-400/10",
+  "Random":     "text-amber-400 border-amber-400/30 bg-amber-400/10",
+  "Do-Nothing": "text-red-400 border-red-400/30 bg-red-400/10",
+};
+
+const FALLBACK_METRICS = [
+  { label: "PPO Agent", value: 148.2, unit: "mg", color: STRATEGY_COLORS["PPO Agent"] },
+  { label: "Rule-Based", value: 134.0, unit: "mg", color: STRATEGY_COLORS["Rule-Based"] },
+  { label: "Random", value: 128.3, unit: "mg", color: STRATEGY_COLORS["Random"] },
+  { label: "Do-Nothing", value: 2.0, unit: "mg", color: STRATEGY_COLORS["Do-Nothing"] },
+];
+
+const FALLBACK_STRATEGY_DATA = [
+  { name: 'PPO Agent', avg: 148.2, max: 153.1, reward: 89.1 },
+  { name: 'Rule-Based', avg: 134.0, max: 153.2, reward: 63.1 },
+  { name: 'Random', avg: 128.3, max: 151.6, reward: 52.7 },
+  { name: 'Do-Nothing', avg: 2.0, max: 2.4, reward: -162.9 },
+];
 
 export default function Report() {
-  const metrics = [
-    { label: "PPO Agent", value: 148.2, unit: "mg", color: "text-primary border-primary/30 bg-primary/10" },
-    { label: "Rule-Based", value: 134.0, unit: "mg", color: "text-blue-400 border-blue-400/30 bg-blue-400/10" },
-    { label: "Random", value: 128.3, unit: "mg", color: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
-    { label: "Do-Nothing", value: 2.0, unit: "mg", color: "text-red-400 border-red-400/30 bg-red-400/10" }
-  ];
+  const [reportData, setReportData] = useState(null);
 
-  const strategyData = [
-    { name: 'PPO Agent', avg: 148.2, max: 153.1, reward: 89.1 },
-    { name: 'Rule-Based', avg: 134.0, max: 153.2, reward: 63.1 },
-    { name: 'Random', avg: 128.3, max: 151.6, reward: 52.7 },
-    { name: 'Do-Nothing', avg: 2.0, max: 2.4, reward: -162.9 },
-  ];
+  useEffect(() => {
+    getReport().then((result) => setReportData(result.data));
+  }, []);
+
+  const metrics = reportData?.strategies
+    ? reportData.strategies.map((s) => ({
+        label: s.name,
+        value: s.avg_biomass,
+        unit: "mg",
+        color: STRATEGY_COLORS[s.name] ?? "text-text border-border bg-surface-2",
+      }))
+    : FALLBACK_METRICS;
+
+  const strategyData = reportData?.strategies
+    ? reportData.strategies.map((s) => ({
+        name: s.name,
+        avg: s.avg_biomass,
+        max: s.max_biomass,
+        reward: s.avg_reward,
+      }))
+    : FALLBACK_STRATEGY_DATA;
 
   const biomassOverTime = Array.from({ length: 16 }, (_, i) => ({
     day: i + 1,
@@ -82,6 +115,10 @@ export default function Report() {
     return null;
   };
 
+  if (!reportData) {
+    return <div className="flex items-center justify-center h-64 text-text-muted">Loading report...</div>;
+  }
+
   return (
     <PageTransition className="p-8 max-w-7xl mx-auto pb-24">
       <div className="mb-10 text-center">
@@ -123,15 +160,15 @@ export default function Report() {
         </div>
         <div className="flex gap-8">
           <div className="text-center">
-            <div className="text-2xl font-display font-bold text-primary">31%</div>
+            <div className="text-2xl font-display font-bold text-primary">{reportData?.highlights?.feed_savings_pct ?? '31'}%</div>
             <div className="text-xs uppercase tracking-widest text-primary/60">Feed Savings</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-display font-bold text-primary">+14.2mg</div>
+            <div className="text-2xl font-display font-bold text-primary">+{reportData?.highlights?.biomass_advantage_mg ?? '14.2'}mg</div>
             <div className="text-xs uppercase tracking-widest text-primary/60">Biomass Adv.</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-display font-bold text-primary">+11.2%</div>
+            <div className="text-2xl font-display font-bold text-primary">+{reportData?.highlights?.survival_improvement_pct ?? '11.2'}%</div>
             <div className="text-xs uppercase tracking-widest text-primary/60">Survival Imp.</div>
           </div>
         </div>

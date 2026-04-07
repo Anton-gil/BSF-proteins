@@ -1,11 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageTransition from '../../components/ui/PageTransition';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
 import { cn } from '../../utils/cn';
+import { getSettings, updatePolicy } from '../../api/client';
 
 export default function Settings() {
   const [activePolicy, setActivePolicy] = useState('ppo');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getSettings().then((result) => setActivePolicy(result.data.policy));
+  }, []);
+
+  const handlePolicyChange = async (policy) => {
+    if (policy === activePolicy || saving) return;
+    setSaving(true);
+    await updatePolicy(policy);
+    setActivePolicy(policy);
+    setSaving(false);
+  };
 
   return (
     <PageTransition className="p-8 max-w-5xl mx-auto pb-24">
@@ -24,53 +38,54 @@ export default function Settings() {
         <div className="flex items-center gap-4 mb-6">
           <h2 className="text-2xl font-bold text-accent">Active Optimization Policy</h2>
           <span className="bg-primary/20 text-primary text-xs font-bold px-3 py-1 rounded-full border border-primary/30 uppercase tracking-widest">
-            {activePolicy === 'ppo' ? 'PPO Agent' : 'Heuristic'}
+            {activePolicy === 'ppo' ? 'PPO Agent' : activePolicy === 'rule_based' ? 'Heuristic' : activePolicy}
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Heuristic Card */}
-          <div 
+          <div
             className={cn(
               "p-6 rounded-2xl border transition-all duration-300 cursor-pointer",
-              activePolicy === 'heuristic' 
-                ? "bg-surface-2 border-primary shadow-[0_0_20px_rgba(132,204,22,0.15)]" 
+              activePolicy === 'rule_based'
+                ? "bg-surface-2 border-primary shadow-[0_0_20px_rgba(132,204,22,0.15)]"
                 : "bg-surface-1 border-border hover:border-text-muted"
             )}
-            onClick={() => setActivePolicy('heuristic')}
+            onClick={() => handlePolicyChange('rule_based')}
           >
             <h3 className="text-xl font-display font-bold text-accent mb-2">Rule-Based Heuristic</h3>
             <p className="text-text-muted text-sm mb-6 min-h-[60px]">
               Traditional expert-encoded rules. Safer, predictable, but suboptimal relative to reinforcement learning models.
             </p>
-            <Button 
-              variant={activePolicy === 'heuristic' ? 'ghost' : 'ghost'} 
-              className={cn("w-full", activePolicy === 'heuristic' && "border-primary text-primary")}
+            <Button
+              variant="ghost"
+              disabled={saving}
+              className={cn("w-full", activePolicy === 'rule_based' && "border-primary text-primary")}
             >
-              {activePolicy === 'heuristic' ? 'Currently Active' : 'Switch to Heuristic'}
+              {saving && activePolicy !== 'rule_based' ? 'Saving...' : activePolicy === 'rule_based' ? 'Currently Active' : 'Switch to Heuristic'}
             </Button>
           </div>
 
           {/* PPO Card */}
-          <div 
+          <div
             className={cn(
               "p-6 rounded-2xl border transition-all duration-300 cursor-pointer",
-              activePolicy === 'ppo' 
-                ? "bg-surface-2 border-primary shadow-[0_0_20px_rgba(132,204,22,0.15)]" 
+              activePolicy === 'ppo'
+                ? "bg-surface-2 border-primary shadow-[0_0_20px_rgba(132,204,22,0.15)]"
                 : "bg-surface-1 border-border hover:border-text-muted"
             )}
-            onClick={() => setActivePolicy('ppo')}
+            onClick={() => handlePolicyChange('ppo')}
           >
             <h3 className="text-xl font-display font-bold text-primary mb-2">Trained PPO Model</h3>
             <p className="text-text-muted text-sm mb-6 min-h-[60px]">
               Proximal Policy Optimization agent tuned on 5M+ steps of simulated environmental and biological data.
             </p>
-            <Button 
+            <Button
               className="w-full"
               variant={activePolicy === 'ppo' ? 'ghost' : 'primary'}
-              disabled={activePolicy === 'ppo'}
+              disabled={activePolicy === 'ppo' || saving}
             >
-              {activePolicy === 'ppo' ? 'Currently Active' : 'Load & Switch to RL Model'}
+              {saving && activePolicy !== 'ppo' ? 'Saving...' : activePolicy === 'ppo' ? 'Currently Active' : 'Load & Switch to RL Model'}
             </Button>
           </div>
         </div>
@@ -79,9 +94,9 @@ export default function Settings() {
       {/* Policy Details */}
       <section>
         <h2 className="text-2xl font-bold text-accent mb-6">Policy Details: {activePolicy === 'ppo' ? 'PPO Agent' : 'Heuristic Rules'}</h2>
-        
+
         <GlassCard className="overflow-hidden mb-12">
-          {activePolicy === 'heuristic' ? (
+          {activePolicy === 'rule_based' ? (
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-primary/30 bg-surface-2 text-xs uppercase tracking-widest text-text-muted">

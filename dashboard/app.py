@@ -168,11 +168,11 @@ def _init():
         'batch_started': False,
         'batch_info': None,
         'history': [],
-        'current_day': 0,                # Simulated day counter
-        'day_completed': False,           # Whether today's recommendation was followed
-        'pending_recommendation': None,   # Stored recommendation awaiting confirmation
-        'pending_action': None,           # Stored action awaiting confirmation
-        'pending_feed_amounts': None,     # Stored feed amounts awaiting confirmation
+        'current_day': 0,           # Simulated day counter
+        'checkin_phase': 0,         # 0=form  1=show_rec  2=day_done
+        'pending_rec': None,        # Stored DailyRecommendation
+        'pending_action': None,     # Stored np.ndarray action
+        'pending_weather': None,    # Weather snapshot used for this rec
         'policy': HeuristicPolicy(),
         'waste_translator': WasteTranslator(),
         'weather_client': WeatherClient(),
@@ -362,37 +362,122 @@ def page_daily_checkin():
         st.warning("No active batch. Please start a batch first.")
         return
 
-    day = st.session_state.current_day
+    day   = st.session_state.current_day
+    phase = st.session_state.checkin_phase   # 0=form  1=show_rec  2=day_done
+    wt    = st.session_state.waste_translator
 
     # ── Day Progression Banner ──
     _render_day_progression(day)
 
-    # Check if the batch is complete
+    # ── Harvest gate ──
     if day >= 16:
         st.success("🎉 **Congratulations!** Your BSF batch has reached harvest stage. "
                    "Head to **History** to review the full batch log.")
         return
 
-    # ── If today's recommendation was already followed, show a message ──
-    if st.session_state.day_completed:
-        st.info(f"✅ Day {day} is complete! Click below to proceed to the next day.")
-        if st.button("➡️ Proceed to Next Day", type="primary"):
-            st.session_state.current_day += 1
-            st.session_state.day_completed = False
-            st.session_state.pending_recommendation = None
-            st.session_state.pending_action = None
-            st.session_state.pending_feed_amounts = None
-            st.rerun()
-        return
-
-    # ── Status bar ──
+    # ── Status bar (always visible) ──
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Day",        f"{day}")
+    c1.metric("Day",        f"{day} / 16")
     c2.metric("Population", f"{batch.estimated_count:,}")
     c3.metric("Total Feed", f"{batch.total_feed_kg:.2f} kg")
     c4.metric("Survival",   f"{batch.estimated_count / batch.initial_count * 100:.0f}%")
 
     st.markdown("---")
+
+    # ══════════════════════════════════════════════
+    # PHASE 2: Day is done — advance to next day
+    # ══════════════════════════════════════════════
+    if phase == 2:
+        rec = st.session_state.pending_rec
+        st.success(f"### ✅ Day {day} Complete!")
+
+        # Summarise what was done
+        if rec and rec.feed_amounts:
+            st.markdown("**You fed:**")
+            for waste, kg in rec.feed_amounts.items():
+                st.markdown(f"  - {wt.get_display_name(waste)}: **{kg:.2f} kg**")
+        if rec:
+            total = sum(rec.feed_amounts.values()) if rec.feed_amounts else 0
+            st.markdown(f"**Total feed:** {total:.2f} kg")
+
+        st.markdown("")
+        st.info("Click the button below to load tomorrow's check-in.")
+
+        if st.button("➡️ Proceed to Day " + str(day + 1), type="primary", key="next_day_btn"):
+            st.session_state.current_day  += 1
+            st.session_state.checkin_phase = 0
+            st.session_state.pending_rec   = None
+            st.session_state.pending_action = None
+            st.session_state.pending_weather = None
+            st.rerun()
+        return
+
+    # ══════════════════════════════════════════════
+    # PHASE 1: Show recommendation, await confirm
+    # ══════════════════════════════════════════════
+    if phase == 1:
+        rec = st.session_state.pending_rec
+        weather = st.session_state.pending_weather
+
+        # Show weather that was captured
+        if weather:
+            st.subheader("🌤️ Conditions Used")
+            wc1, wc2, wc3 = st.columns(3)
+            wc1.metric("Temperature", f"{weather.temperature_c:.1f} °C")
+            wc2.metric("Humidity",    f"{weather.humidity_pct:.0f} %")
+            wc3.markdown(f"**{weather.description}**\n\n*Source: {weather.source}*")
+            st.markdown("---")
+
+        st.success("### 🎯 Today's Recommendation")
+        rc1, rc2 = st.columns([2, 1])
+        with rc1:
+            st.markdown(f"### 🥬 {rec.feed_instruction}")
+            if rec.feed_amounts:
+                st.markdown("**Breakdown:**")
+                for waste, kg in rec.feed_amounts.items():
+                    st.markdown(f"- {wt.get_display_name(waste)}: **{kg:.2f} kg**")
+            st.markdown(f"**Target C:N ratio:** {rec.target_cn:.0f}:1")
+        with rc2:
+            st.markdown(f"**💧 {rec.moisture_action}**")
+            st.markdown(f"**🌀 {rec.aeration_action}**")
+
+        if rec.notes:
+            st.info("**Notes:**\n" + "\n".join(f"• {n}" for n in rec.notes))
+
+        st.progress(rec.confidence, text=f"Confidence: {rec.confidence*100:.0f}%")
+        st.markdown("---")
+
+        col_confirm, col_back = st.columns([3, 1])
+        with col_confirm:
+            if st.button("✅ I followed this recommendation — go to next day",
+                         type="primary", key="confirm_btn"):
+                # ── Record the day ──
+                total_feed = sum(rec.feed_amounts.values()) if rec.feed_amounts else 0.0
+                action     = st.session_state.pending_action
+
+                batch.total_feed_kg   += total_feed
+                batch.last_feed_time   = datetime.now()
+                # Adjust estimated count by severity observed (captured during form)
+                st.session_state.history.append({
+                    'date':           datetime.now().isoformat(),
+                    'day':            day,
+                    'feed_kg':        total_feed,
+                    'recommendation': rec.feed_instruction,
+                    'action':         action.tolist() if action is not None else [],
+                })
+                st.session_state.checkin_phase = 2   # → day done screen
+                st.rerun()
+
+        with col_back:
+            if st.button("🔄 Redo", key="redo_btn"):
+                st.session_state.checkin_phase = 0
+                st.session_state.pending_rec   = None
+                st.rerun()
+        return
+
+    # ══════════════════════════════════════════════
+    # PHASE 0: Input form → generate recommendation
+    # ══════════════════════════════════════════════
 
     # ── Weather ──
     st.subheader("🌤️ Current Conditions")
@@ -422,27 +507,23 @@ def page_daily_checkin():
 
     # ── Available waste ──
     st.subheader("🗑️ Available Waste Today")
-    wt = st.session_state.waste_translator
-    all_wastes = wt.list_wastes()
-
+    all_wastes  = wt.list_wastes()
     default_sel = [w for w in ["banana_peels", "rice_bran"] if w in all_wastes]
-    selected = st.multiselect(
+    selected    = st.multiselect(
         "What waste do you have?",
         options=all_wastes,
         default=default_sel,
         format_func=wt.get_display_name
     )
     if selected:
-        info_str = "  |  ".join(
+        st.caption("  |  ".join(
             f"**{wt.get_display_name(w)}**: C:N {wt.get_cn_ratio(w):.0f}"
             for w in selected if wt.get_cn_ratio(w)
-        )
-        st.caption(info_str)
+        ))
 
     st.markdown("---")
 
-    # ── Get Recommendation ──
-    if st.button("🎯 Get Today's Recommendation", type="primary"):
+    if st.button("🎯 Get Today's Recommendation", type="primary", key="get_rec_btn"):
         farmer_obs = FarmerObservation(
             larvae_activity=activity,
             mortality_estimate=mortality,
@@ -450,78 +531,32 @@ def page_daily_checkin():
             smell=smell
         )
 
-        # Update estimated population
+        # Adjust estimated population based on mortality observation
         mult = {"none": 1.0, "few": 0.99, "some": 0.95, "many": 0.85}[mortality]
         batch.estimated_count = int(batch.estimated_count * mult)
 
-        # Use simulated day instead of real time for age_days
         age_days = float(day)
-
-        obs = st.session_state.state_estimator.estimate_state(
+        obs      = st.session_state.state_estimator.estimate_state(
             batch_info=batch,
             farmer_obs=farmer_obs,
             weather=weather
         )
-        # Override the age_days in observation with our simulated day
-        obs[0] = age_days
+        obs[0]   = age_days   # override with simulated day
 
         action = st.session_state.policy.predict(obs)
-        rec = st.session_state.rec_generator.generate(
+        rec    = st.session_state.rec_generator.generate(
             action=action,
             available_wastes=selected,
             larvae_count=batch.estimated_count,
             age_days=age_days
         )
 
-        # Store recommendation in session state so it persists across reruns
-        st.session_state.pending_recommendation = rec
-        st.session_state.pending_action = action
-        st.session_state.pending_feed_amounts = rec.feed_amounts
+        # Persist to session state and advance to phase 1
+        st.session_state.pending_rec     = rec
+        st.session_state.pending_action  = action
+        st.session_state.pending_weather = weather
+        st.session_state.checkin_phase   = 1
         st.rerun()
-
-    # ── Display pending recommendation (persisted in session state) ──
-    rec = st.session_state.pending_recommendation
-    if rec is not None:
-        st.success("### ✅ Today's Recommendation")
-        rc1, rc2 = st.columns([2, 1])
-        with rc1:
-            st.markdown(f"### 🥬 {rec.feed_instruction}")
-            if rec.feed_amounts:
-                st.markdown("**Breakdown:**")
-                for waste, kg in rec.feed_amounts.items():
-                    st.markdown(f"- {wt.get_display_name(waste)}: **{kg:.2f} kg**")
-            st.markdown(f"**Target C:N ratio:** {rec.target_cn:.0f}:1")
-        with rc2:
-            st.markdown(f"**💧 {rec.moisture_action}**")
-            st.markdown(f"**🌀 {rec.aeration_action}**")
-
-        if rec.notes:
-            st.info("**Notes:**\n" + "\n".join(f"• {n}" for n in rec.notes))
-
-        st.progress(rec.confidence, text=f"Confidence: {rec.confidence*100:.0f}%")
-
-        st.markdown("---")
-
-        # ── Confirm Button (separate from Get Recommendation) ──
-        if st.button("✅ I followed this recommendation", type="primary"):
-            feed_amounts = st.session_state.pending_feed_amounts or {}
-            total_feed = sum(feed_amounts.values()) if feed_amounts else 0.0
-            action = st.session_state.pending_action
-
-            batch.total_feed_kg += total_feed
-            batch.last_feed_time = datetime.now()
-
-            st.session_state.history.append({
-                'date': datetime.now().isoformat(),
-                'day': day,
-                'feed_kg': total_feed,
-                'recommendation': rec.feed_instruction,
-                'action': action.tolist() if action is not None else [],
-            })
-
-            # Mark today as complete — user can proceed to next day
-            st.session_state.day_completed = True
-            st.rerun()
 
 
 def page_history():
@@ -1122,14 +1157,14 @@ def page_settings():
     st.markdown("---")
     st.subheader("🗑️ End Current Batch")
     if st.button("🗑️ End Batch", type="secondary"):
-        st.session_state.batch_started = False
-        st.session_state.batch_info    = None
-        st.session_state.history       = []
-        st.session_state.current_day   = 0
-        st.session_state.day_completed = False
-        st.session_state.pending_recommendation = None
-        st.session_state.pending_action = None
-        st.session_state.pending_feed_amounts = None
+        st.session_state.batch_started  = False
+        st.session_state.batch_info      = None
+        st.session_state.history         = []
+        st.session_state.current_day     = 0
+        st.session_state.checkin_phase   = 0
+        st.session_state.pending_rec     = None
+        st.session_state.pending_action  = None
+        st.session_state.pending_weather = None
         st.success("Batch ended. You can start a new one.")
         st.rerun()
 
@@ -1154,16 +1189,35 @@ def main():
 
     page = st.sidebar.radio("Navigate", pages, index=0)
 
-    # Active batch summary in sidebar
+    # Active batch summary + day timeline in sidebar
     if st.session_state.batch_info:
         st.sidebar.markdown("---")
-        b = st.session_state.batch_info
+        b   = st.session_state.batch_info
         day = st.session_state.current_day
-        stage_name, _, _ = _get_stage_info(day)
-        st.sidebar.markdown(f"**Active Batch — Day {day}**")
-        st.sidebar.markdown(f"Stage: {stage_name}")
-        st.sidebar.markdown(f"Population: {b.estimated_count:,}")
-        st.sidebar.markdown(f"Feed used:  {b.total_feed_kg:.2f} kg")
+        stage_name, stage_desc, prog = _get_stage_info(day)
+
+        st.sidebar.markdown(f"### 📅 Day **{day}** / 16")
+        st.sidebar.progress(prog)
+        st.sidebar.markdown(f"`{stage_name}`")
+        st.sidebar.caption(stage_desc)
+        st.sidebar.markdown("---")
+        st.sidebar.markdown(f"👥 Population: **{b.estimated_count:,}**")
+        st.sidebar.markdown(f"🌿 Feed used:  **{b.total_feed_kg:.2f} kg**")
+
+        # Mini day timeline — dots for completed days
+        history_days = {h['day'] for h in st.session_state.history}
+        dots = ""
+        for d in range(16):
+            if d < day and d in history_days:
+                dots += "🟢"
+            elif d == day:
+                dots += "🔵"
+            else:
+                dots += "⚪"
+            if (d + 1) % 8 == 0:
+                dots += "\n"
+        st.sidebar.markdown(f"**Batch Timeline:**\n{dots}")
+        st.sidebar.caption("🟢 done  🔵 today  ⚪ upcoming")
 
     # Route
     if page == "Start Batch":

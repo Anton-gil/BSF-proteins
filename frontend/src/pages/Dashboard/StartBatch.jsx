@@ -4,11 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
 import { ChevronDown } from 'lucide-react';
+import { createBatch } from '../../api/client';
+import { useBatchStore } from '../../store/batchStore';
 
 export default function StartBatch() {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
-  
+  const [submitting, setSubmitting] = useState(false);
+  const { batches, setBatches } = useBatchStore();
+
   const [formData, setFormData] = useState({
     larvaeCount: 10000,
     containerSize: 'standard',
@@ -16,11 +20,15 @@ export default function StartBatch() {
     location: 'chennai'
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Normally this is POST /api/batches
-    console.log("Submitting batch:", formData);
+    setSubmitting(true);
+    const result = await createBatch(formData);
+    if (result.data) {
+      setBatches([result.data, ...batches]);
+    }
     navigate('/dashboard/history');
+    setSubmitting(false);
   };
 
   return (
@@ -157,8 +165,8 @@ export default function StartBatch() {
           </AnimatePresence>
         </div>
 
-        <Button type="submit" size="lg" className="w-full h-14 text-lg">
-          Start Batch →
+        <Button type="submit" size="lg" className="w-full h-14 text-lg" disabled={submitting}>
+          {submitting ? 'Creating...' : 'Start Batch →'}
         </Button>
       </form>
     </div>

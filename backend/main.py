@@ -113,9 +113,15 @@ app.add_middleware(
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
+CONTAINER_SIZE_CM2 = {
+    "small": 1200.0,       # 40×30 cm
+    "standard": 2400.0,    # 60×40 cm
+    "industrial": 4800.0,  # 80×60 cm
+}
+
 class NewBatchRequest(BaseModel):
     larvaeCount: int
-    containerSize: float
+    containerSize: str     # "small" | "standard" | "industrial"
     startDate: str
     location: str
 
@@ -239,7 +245,7 @@ def checkin(req: CheckInRequest) -> Dict:
                 start_date=start_dt,
                 initial_count=batch_data.get("larvaeCount", req.estimated_larvae_count),
                 estimated_count=req.estimated_larvae_count,
-                container_area_cm2=float(batch_data.get("containerSize", 200.0)),
+                container_area_cm2=CONTAINER_SIZE_CM2.get(batch_data.get("containerSize", "standard"), 2400.0),
             )
         else:
             # Batch not found — construct from check-in data
@@ -335,7 +341,7 @@ def get_report() -> Dict:
             for row in reader:
                 strategies.append(
                     {
-                        "strategy": row["strategy"],
+                        "name": row["strategy"],
                         "avg_biomass": float(row["avg_biomass"]),
                         "std_biomass": float(row["std_biomass"]),
                         "max_biomass": float(row["max_biomass"]),
@@ -348,10 +354,10 @@ def get_report() -> Dict:
         logger.error("Could not read results CSV: %s", exc)
         # Return hardcoded fallback so dashboard never breaks
         strategies = [
-            {"strategy": "PPO Agent",  "avg_biomass": 148.2,  "std_biomass": 9.64,  "max_biomass": 153.14, "avg_reward": 89.14,   "avg_feed_g": 507.69, "avg_mortality": 67.78},
-            {"strategy": "Rule-Based", "avg_biomass": 134.04, "std_biomass": 18.65, "max_biomass": 153.25, "avg_reward": 63.07,   "avg_feed_g": 737.17, "avg_mortality": 78.95},
-            {"strategy": "Random",     "avg_biomass": 128.34, "std_biomass": 21.38, "max_biomass": 151.63, "avg_reward": 52.66,   "avg_feed_g": 744.67, "avg_mortality": 81.52},
-            {"strategy": "Do-Nothing", "avg_biomass": 1.96,   "std_biomass": 0.28,  "max_biomass": 2.44,   "avg_reward": -162.88, "avg_feed_g": 0.0,    "avg_mortality": 99.99},
+            {"name": "PPO Agent",  "avg_biomass": 148.2,  "std_biomass": 9.64,  "max_biomass": 153.14, "avg_reward": 89.14,   "avg_feed_g": 507.69, "avg_mortality": 67.78},
+            {"name": "Rule-Based", "avg_biomass": 134.04, "std_biomass": 18.65, "max_biomass": 153.25, "avg_reward": 63.07,   "avg_feed_g": 737.17, "avg_mortality": 78.95},
+            {"name": "Random",     "avg_biomass": 128.34, "std_biomass": 21.38, "max_biomass": 151.63, "avg_reward": 52.66,   "avg_feed_g": 744.67, "avg_mortality": 81.52},
+            {"name": "Do-Nothing", "avg_biomass": 1.96,   "std_biomass": 0.28,  "max_biomass": 2.44,   "avg_reward": -162.88, "avg_feed_g": 0.0,    "avg_mortality": 99.99},
         ]
 
     return {

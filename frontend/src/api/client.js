@@ -1,10 +1,8 @@
 import axios from 'axios';
 import { mockBatches, mockReport } from './mocks';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 const client = axios.create({
-  baseURL: API_URL,
+  baseURL: '',
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' }
 });
@@ -13,13 +11,11 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error);
-    // Silent fail and return error
     return Promise.resolve({ error: error.response || error.message });
   }
 );
 
-// Mocks simulation helper
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const createBatch = async (data) => {
   try {
@@ -45,12 +41,12 @@ export const getBatches = async () => {
 
 export const getBatch = async (id) => {
   try {
-    const res = await client.get(\`/api/batches/\${id}\`);
+    const res = await client.get('/api/batches/' + id);
     if (res.error) throw res.error;
     return { data: res.data };
   } catch (err) {
     await delay(500);
-    return { data: mockBatches.find(b => b.id === id) || mockBatches[0] };
+    return { data: mockBatches.find((b) => b.id === id) || mockBatches[0] };
   }
 };
 
@@ -61,15 +57,15 @@ export const submitCheckin = async (data) => {
     return { data: res.data };
   } catch (err) {
     await delay(800);
-    return { 
-      data: { 
+    return {
+      data: {
         schedule: [
           { time: '08:00 AM', mix: '2kg Veg + 1kg Bakery', h2o: '+500ml H2O' },
           { time: '02:00 PM', mix: '3kg Fruit', h2o: 'No added water' },
-          { time: '06:00 PM', mix: '1kg Spent Grain', h2o: '+200ml H2O' }
+          { time: '06:00 PM', mix: '1kg Spent Grain', h2o: '+200ml H2O' },
         ],
-        projection: { expected: 48, trajectory: 'Optimal' }
-      } 
+        projection: { expected: '48mg', trajectory: 'Optimal' },
+      },
     };
   }
 };

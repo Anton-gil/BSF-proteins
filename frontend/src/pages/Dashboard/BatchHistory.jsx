@@ -1,20 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassCard from '../../components/ui/GlassCard';
 import Badge from '../../components/ui/Badge';
 import { ChevronDown, Search } from 'lucide-react';
+import { getBatches } from '../../api/client';
+import { useBatchStore } from '../../store/batchStore';
 
 export default function BatchHistory() {
   const [expandedRow, setExpandedRow] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { batches, setBatches } = useBatchStore();
 
-  // Mock data
-  const batches = [
-    { id: '204', date: '2023-11-20', duration: 8, biomass: '-', status: 'active', policy: 'PPO Agent' },
-    { id: '203', date: '2023-11-02', duration: 16, biomass: '148mg', status: 'completed', policy: 'PPO Agent' },
-    { id: '202', date: '2023-10-15', duration: 16, biomass: '142mg', status: 'completed', policy: 'PPO Agent' },
-    { id: '201', date: '2023-09-28', duration: 18, biomass: '134mg', status: 'completed', policy: 'Heuristic' },
-    { id: '200', date: '2023-09-08', duration: 17, biomass: '131mg', status: 'completed', policy: 'Heuristic' },
-  ];
+  useEffect(() => {
+    getBatches().then((result) => {
+      setBatches(result.data);
+      setLoading(false);
+    });
+  }, []);
 
   return (
     <div className="p-8 max-w-6xl mx-auto pb-24">
@@ -32,6 +34,8 @@ export default function BatchHistory() {
           />
         </div>
       </div>
+
+      {loading && <p className="text-text-muted">Loading batches...</p>}
 
       <GlassCard className="overflow-hidden">
         <div className="w-full overflow-x-auto">
