@@ -34,6 +34,14 @@ export const useBatchStore = create(
         todaySchedule: null,
       }),
 
+      // Resume an existing batch preserving its currentDay and checkIns
+      resumeBatch: (batch) => set({
+        activeBatch: batch,
+        currentDay: batch.currentDay ?? 0,
+        checkIns: batch.checkIns ?? [],
+        todaySchedule: null,
+      }),
+
       setBatches: (batches) => set({ batches }),
       setPolicy: (policy) => set({ policy }),
       setTodaySchedule: (schedule) => set({ todaySchedule: schedule }),

@@ -12,7 +12,7 @@ export default function BatchHistory() {
   const [expandedRow, setExpandedRow] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const { batches, setBatches, activeBatch, setActiveBatch, currentDay, clearHistory } = useBatchStore();
+  const { batches, setBatches, activeBatch, resumeBatch, currentDay, clearHistory } = useBatchStore();
   const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function BatchHistory() {
 
   // Handle clicking "Continue" on an active batch
   const handleContinueBatch = (batch) => {
-    setActiveBatch(batch);
+    resumeBatch(batch);
     navigate('/dashboard/checkin');
   };
 
