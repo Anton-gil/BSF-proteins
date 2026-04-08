@@ -151,22 +151,21 @@ export default function Settings() {
               <tr className="border-b border-border">
                 <td className="p-4 font-bold text-left text-text-muted">Avg Biomass</td>
                 <td className="p-4 font-mono">134mg</td>
-                <td className="p-4 font-mono text-primary font-bold">148mg</td>
+                <td className="p-4 font-mono text-primary font-bold">122mg</td>
               </tr>
               <tr className="border-b border-border">
-                <td className="p-4 font-bold text-left text-text-muted">Feed Used</td>
-                <td className="p-4 font-mono">737g</td>
+                <td className="p-4 font-bold text-left text-text-muted">Avg Reward</td>
+                <td className="p-4 font-mono">135 pts</td>
                 <td className="p-4 font-mono text-primary font-bold overflow-hidden relative">
-                  508g
-                  <span className="absolute right-4 text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded uppercase tracking-wider">-31%</span>
+                  130 pts
                 </td>
               </tr>
               <tr>
                 <td className="p-4 font-bold text-left text-text-muted">Mortality</td>
                 <td className="p-4 font-mono">79%</td>
                 <td className="p-4 font-mono text-primary font-bold overflow-hidden relative">
-                  68%
-                  <span className="absolute right-4 text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded uppercase tracking-wider">-11%</span>
+                  74%
+                  <span className="absolute right-4 text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded uppercase tracking-wider">-5%</span>
                 </td>
               </tr>
             </tbody>

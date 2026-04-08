@@ -468,10 +468,10 @@ def get_report() -> Dict:
         logger.error("Could not read results CSV: %s", exc)
         # Fallback values — exact copy of results/summary_comparison.csv
         strategies = [
-            {"name": "PPO Agent",  "avg_biomass": 110.45, "std_biomass": 37.57, "max_biomass": 151.67, "avg_reward":   30.22, "avg_feed_g": 196.28, "avg_mortality": 82.03},
-            {"name": "Rule-Based", "avg_biomass": 134.04, "std_biomass": 18.65, "max_biomass": 153.25, "avg_reward":   63.07, "avg_feed_g": 737.17, "avg_mortality": 78.95},
-            {"name": "Random",     "avg_biomass": 128.34, "std_biomass": 21.38, "max_biomass": 151.63, "avg_reward":   52.66, "avg_feed_g": 744.67, "avg_mortality": 81.52},
-            {"name": "Do-Nothing", "avg_biomass":   1.96, "std_biomass":  0.28, "max_biomass":   2.44, "avg_reward": -162.88, "avg_feed_g":   0.00, "avg_mortality": 99.99},
+            {"name": "PPO Agent",  "avg_biomass": 122.34, "std_biomass": 18.88, "max_biomass": 145.14, "avg_reward": 130.49, "avg_feed_g": 970.18, "avg_mortality": 73.66},
+            {"name": "Rule-Based", "avg_biomass": 134.04, "std_biomass": 18.65, "max_biomass": 153.25, "avg_reward": 135.42, "avg_feed_g": 737.17, "avg_mortality": 78.95},
+            {"name": "Random",     "avg_biomass": 128.34, "std_biomass": 21.38, "max_biomass": 151.63, "avg_reward": 126.33, "avg_feed_g": 744.67, "avg_mortality": 81.52},
+            {"name": "Do-Nothing", "avg_biomass":   1.96, "std_biomass":  0.28, "max_biomass":   2.44, "avg_reward": -87.89, "avg_feed_g":   0.00, "avg_mortality": 99.99},
         ]
 
     # Compute highlights from actual strategy data (not hardcoded)

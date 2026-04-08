@@ -48,7 +48,7 @@ export default function BatchHistory() {
   // Get biomass display
   const getBiomass = (batch) => {
     if (batch.finalBiomass) return batch.finalBiomass;
-    if (batch.status === 'completed') return '~148 mg';
+    if (batch.status === 'completed') return '~122 mg';
     return 'In Progress';
   };
 

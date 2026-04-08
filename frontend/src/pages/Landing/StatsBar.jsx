@@ -6,9 +6,9 @@ export default function StatsBar() {
   const { ref, isInView } = useScrollAnimation("-10%");
 
   const stats = [
-    { label: "Avg Biomass", value: 148, suffix: " mg" },
-    { label: "Feed Savings vs Traditional", value: 31, suffix: "%" },
-    { label: "Survival Rate", value: 68, suffix: "%" },
+    { label: "Avg Biomass (PPO)", value: 122, suffix: " mg" },
+    { label: "Avg Reward Score", value: 130, suffix: " pts" },
+    { label: "Mortality Reduction vs Baseline", value: 5, suffix: "%" },
     { label: "Avg Batch Duration", value: 16, suffix: " days" },
   ];
 
