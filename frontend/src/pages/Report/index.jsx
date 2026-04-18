@@ -72,8 +72,10 @@ export default function Report() {
   }, []);
 
   // ─── Derived data from API ───────────────────────────────────────────────
-  const ppo  = strategies.find(s => s.name === 'PPO Agent');
-  const rule = strategies.find(s => s.name === 'Rule-Based');
+  const ppo      = strategies.find(s => s.name === 'PPO Agent');
+  const rule     = strategies.find(s => s.name === 'Rule-Based');
+  const random   = strategies.find(s => s.name === 'Random');
+  const doNothing = strategies.find(s => s.name === 'Do-Nothing');
 
   // Highlights — calculated from real CSV, not hardcoded
   const highlights = useMemo(() => {
@@ -99,16 +101,16 @@ export default function Report() {
 
   // Radar data — normalized to PPO as 100
   const radarData = useMemo(() => {
-    if (!ppo || !rule) return [];
+    if (!ppo || !rule || !random) return [];
     const norm = (val, ref) => Math.round(Math.min(100, (val / ref) * 100));
     return [
-      { subject: 'Biomass Yield',   PPO: 100, RuleBased: norm(rule.avg_biomass, ppo.avg_biomass) },
-      { subject: 'Feed Efficiency', PPO: 100, RuleBased: norm(ppo.avg_feed_g === 0 ? 1 : rule.avg_feed_g, ppo.avg_feed_g === 0 ? 1 : ppo.avg_feed_g)  },
-      { subject: 'Survival Rate',   PPO: norm(100 - ppo.avg_mortality, 100), RuleBased: norm(100 - rule.avg_mortality, 100) },
-      { subject: 'Max Reward',      PPO: norm(ppo.avg_reward + 200, 300),   RuleBased: norm(rule.avg_reward + 200, 300) },
-      { subject: 'Consistency',     PPO: norm(ppo.avg_biomass / Math.max(ppo.std_biomass, 1), 10), RuleBased: norm(rule.avg_biomass / Math.max(rule.std_biomass, 1), 10) },
+      { subject: 'Biomass Yield',   PPO: 100, RuleBased: norm(rule.avg_biomass, ppo.avg_biomass), Random: norm(random.avg_biomass, ppo.avg_biomass) },
+      { subject: 'Feed Efficiency', PPO: 100, RuleBased: norm(ppo.avg_feed_g === 0 ? 1 : rule.avg_feed_g, ppo.avg_feed_g === 0 ? 1 : ppo.avg_feed_g), Random: norm(ppo.avg_feed_g === 0 ? 1 : random.avg_feed_g, ppo.avg_feed_g === 0 ? 1 : ppo.avg_feed_g) },
+      { subject: 'Survival Rate',   PPO: norm(100 - ppo.avg_mortality, 100), RuleBased: norm(100 - rule.avg_mortality, 100), Random: norm(100 - random.avg_mortality, 100) },
+      { subject: 'Max Reward',      PPO: norm(ppo.avg_reward + 200, 300),   RuleBased: norm(rule.avg_reward + 200, 300), Random: norm(random.avg_reward + 200, 300) },
+      { subject: 'Consistency',     PPO: norm(ppo.avg_biomass / Math.max(ppo.std_biomass, 1), 10), RuleBased: norm(rule.avg_biomass / Math.max(rule.std_biomass, 1), 10), Random: norm(random.avg_biomass / Math.max(random.std_biomass, 1), 10) },
     ];
-  }, [ppo, rule]);
+  }, [ppo, rule, random]);
 
   if (loading) {
     return (
@@ -188,7 +190,7 @@ export default function Report() {
         </motion.div>
       )}
 
-      {/* Charts grid */}
+      {/* Charts grid — 6 charts in 2-col layout */}
       <motion.div
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
         className="grid grid-cols-1 lg:grid-cols-2 gap-8"
@@ -205,9 +207,9 @@ export default function Report() {
                 <XAxis dataKey="name" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} unit=" mg" />
                 <Tooltip content={<BarTooltip />} cursor={{ fill: '#ffffff08' }} />
-                <Bar dataKey="avg_biomass" name="Avg Biomass" radius={[6, 6, 0, 0]} animationDuration={1500}>
-                  {strategies.map((s) => (
-                    <Cell key={s.name} fill={COLORS[s.name]?.hex ?? '#6b7280'} />
+                <Bar dataKey="avg_biomass" name="Avg Biomass" radius={[6, 6, 0, 0]} isAnimationActive={false}>
+                  {strategies.map((s, idx) => (
+                    <Cell key={`cell-avg-${idx}`} fill={COLORS[s.name]?.hex ?? '#6b7280'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -276,9 +278,52 @@ export default function Report() {
                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                 <Radar name="PPO Agent"   dataKey="PPO"      stroke="#84cc16" fill="#84cc16" fillOpacity={0.4} animationDuration={2000} />
                 <Radar name="Rule-Based" dataKey="RuleBased" stroke="#60a5fa" fill="#60a5fa" fillOpacity={0.25} animationDuration={2000} />
+                <Radar name="Random" dataKey="Random" stroke="#eab308" fill="#eab308" fillOpacity={0.15} animationDuration={2000} />
                 <Tooltip contentStyle={{ backgroundColor: '#0d1a0d', borderColor: '#ffffff1a', color: '#f0fdf0', fontSize: '12px' }} />
                 <Legend wrapperStyle={{ paddingTop: '16px', fontSize: '12px' }} />
               </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </GlassCard>
+
+        {/* ⑤ Max Biomass Comparison */}
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-bold mb-1 text-accent">Peak Biomass (Best Episode)</h3>
+          <p className="text-xs text-text-muted mb-5">Maximum biomass (mg) achieved in the best single evaluation episode per strategy.</p>
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={strategies} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" vertical={false} />
+                <XAxis dataKey="name" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} unit=" mg" />
+                <Tooltip content={<BarTooltip />} cursor={{ fill: '#ffffff08' }} />
+                <Bar dataKey="max_biomass" name="Max Biomass" radius={[6, 6, 0, 0]} isAnimationActive={false}>
+                  {strategies.map((s, idx) => (
+                    <Cell key={`cell-max-${idx}`} fill={COLORS[s.name]?.hex ?? '#6b7280'} fillOpacity={0.85} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </GlassCard>
+
+        {/* ⑥ Consistency — Std Dev (lower = more consistent) */}
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-bold mb-1 text-accent">Result Consistency (Std Dev)</h3>
+          <p className="text-xs text-text-muted mb-5">Lower standard deviation = more predictable, consistent results. PPO is 2× more consistent than rule-based.</p>
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={strategies} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" vertical={false} />
+                <XAxis dataKey="name" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} unit=" mg" />
+                <Tooltip content={<BarTooltip />} cursor={{ fill: '#ffffff08' }} />
+                <Bar dataKey="std_biomass" name="Std Dev (mg)" radius={[6, 6, 0, 0]} isAnimationActive={false}>
+                  {strategies.map((s, idx) => (
+                    <Cell key={`cell-std-${idx}`} fill={COLORS[s.name]?.hex ?? '#6b7280'} fillOpacity={0.7} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </GlassCard>

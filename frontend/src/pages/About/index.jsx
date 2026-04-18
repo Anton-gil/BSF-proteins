@@ -54,6 +54,25 @@ export default function About() {
             </div>
           </div>
         </section>
+
+        {/* Vision & AI Approach Section */}
+        <section className="py-24">
+          <div className="container mx-auto px-6 max-w-4xl text-center">
+            <h2 className="text-3xl font-display font-bold mb-8 text-accent">What We Are Building</h2>
+            <div className="space-y-6 text-text-muted text-lg leading-relaxed text-left bg-surface-2 p-8 rounded-2xl border border-border">
+              <p>
+                Our vision is to revolutionize the way insect farming is conducted by moving away from traditional, rigid rule-based heuristics to highly adaptive, intelligent systems. 
+                <strong className="text-primary"> The Black Soldier Fly (Hermetia illucens)</strong> is nature's ultimate upcycler, capable of transforming organic waste into high-quality protein and lipids. However, maximizing their growth while minimizing feed usage and mortality requires perfectly timed micro-adjustments to environmental conditions and feed formulations.
+              </p>
+              <p>
+                Through the power of a custom <strong className="text-accent">Proximal Policy Optimization (PPO) Reinforcement Learning Agent</strong>, our platform actively monitors the biomass, ambient temperature, humidity, and C:N (Carbon to Nitrogen) ratio of the substrate in real-time. Instead of following a static feeding schedule, the AI dynamically learns the optimal moments to intervene, effectively 'learning' the insect's biology on a granular scale.
+              </p>
+              <p>
+                As we continue to develop this platform, we plan to integrate advanced computer vision for live larvae counting, automated IoT dispenser controls for hands-free facility management, and multi-agent coordination for optimizing entire industrial warehouses simultaneously. The future of sustainable protein is AI-driven, and it starts here.
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
     </PageTransition>
   );

@@ -24,6 +24,21 @@ export default function BatchHistory() {
     });
   }, []);
 
+  // Merge activeBatch into display list if not already present from API
+  const allBatches = React.useMemo(() => {
+    if (!activeBatch) return batches;
+    const alreadyInList = batches.some(b => b.id === activeBatch.id);
+    if (alreadyInList) return batches;
+    // Build enriched activeBatch with current check-ins from store
+    const enriched = {
+      ...activeBatch,
+      status: 'active',
+      currentDay,
+      checkIns: useBatchStore.getState().checkIns,
+    };
+    return [enriched, ...batches];
+  }, [batches, activeBatch, currentDay]);
+
   // Format date safely
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -60,8 +75,8 @@ export default function BatchHistory() {
     return p.toUpperCase();
   };
 
-  // Filter batches by search
-  const filteredBatches = batches.filter((b) => {
+  // Filter batches by search (use merged list)
+  const filteredBatches = allBatches.filter((b) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -95,7 +110,7 @@ export default function BatchHistory() {
                 className="bg-surface-1 border border-border rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-primary/50 w-64"
               />
             </div>
-            {batches.length > 0 && (
+            {allBatches.length > 0 && (
               <button
                 onClick={async () => {
                   if (!window.confirm('Clear all batch history? Active batches with check-ins will be kept.')) return;

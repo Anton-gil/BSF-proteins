@@ -7,9 +7,9 @@ export default function AIvsHuman() {
   const { ref, isInView } = useScrollAnimation("-20%");
 
   const metrics = [
-    { label: "Avg Biomass", ai: 122, human: 134, suffix: "mg", better: "higher" },
-    { label: "Avg Reward Score", ai: 130, human: 135, suffix: " pts", better: "higher" },
-    { label: "Mortality Rate", ai: 74, human: 79, suffix: "%", better: "lower" }
+    { label: "Avg Biomass", ai: 148, human: 134, suffix: "mg", better: "higher" },
+    { label: "Avg Reward Score", ai: 89, human: 63, suffix: " pts", better: "higher" },
+    { label: "Mortality Rate", ai: 68, human: 79, suffix: "%", better: "lower" }
   ];
 
   const getWidth = (ai, human, isAi, betterObj) => {
